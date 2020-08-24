@@ -93,7 +93,7 @@ class TeacherEnv(gym.Env):
             try:
                 interaction = our_loop.send(action)
                 self._max_episode_steps = t
-            except RuntimeError:  # StopIteration
+            except StopIteration:  # StopIteration
                 done = True
 
             if done:
