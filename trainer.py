@@ -345,6 +345,7 @@ class Trainer(tune.Trainable):
             config.update(render=render)
             trainer = cls(config)
             for i, result in enumerate(trainer.loop()):
+                pprint(result)
                 if writer is not None:
                     for k, v in k_scalar_pairs(**result):
                         writer.add_scalar(k, v, i)
