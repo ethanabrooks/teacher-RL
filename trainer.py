@@ -164,6 +164,7 @@ class Trainer(tune.Trainable):
             agent.to(self.device)
             rollouts.to(self.device)
 
+        rollouts.obs[0].copy_(train_envs.reset())
         for i in range(num_epochs):
             eval_counter = self.build_epoch_counter(num_processes)
             if eval_interval and not no_eval and i % eval_interval == 0:
@@ -196,8 +197,6 @@ class Trainer(tune.Trainable):
                             infos=epoch_output.infos,
                         )
                 eval_envs.close()
-
-            rollouts.obs[0].copy_(train_envs.reset())
 
             for epoch_output in run_epoch(
                 obs=rollouts.obs[0],
