@@ -1,17 +1,13 @@
-import abc
-import functools
 import inspect
-import itertools
 import os
 import re
 import sys
-from collections import defaultdict, namedtuple, Counter
+from collections import defaultdict, namedtuple
 from pathlib import Path
 from pprint import pprint
 from typing import Dict
 
 import gym
-import numpy as np
 import ray
 import torch
 from ray import tune
@@ -21,6 +17,7 @@ from tensorboardX import SummaryWriter
 from common.vec_env.dummy_vec_env import DummyVecEnv
 from common.vec_env.subproc_vec_env import SubprocVecEnv
 from common.vec_env.util import set_seeds
+from epoch_counter import EpochCounter
 from networks import Agent, AgentOutputs, MLPBase
 from ppo import PPO
 from rollouts import RolloutStorage
@@ -97,31 +94,6 @@ class Trainer(tune.Trainable):
         torch.set_num_threads(1)
         os.environ["OMP_NUM_THREADS"] = "1"
 
-        class EpochCounter:
-            def __init__(self):
-                self.episode_rewards = []
-                self.episode_time_steps = []
-                self.rewards = np.zeros(num_processes)
-                self.time_steps = np.zeros(num_processes)
-
-            def update(self, reward, done):
-                self.rewards += reward.numpy()
-                self.time_steps += np.ones_like(done)
-                self.episode_rewards += list(self.rewards[done])
-                self.episode_time_steps += list(self.time_steps[done])
-                self.rewards[done] = 0
-                self.time_steps[done] = 0
-
-            def reset(self):
-                self.episode_rewards = []
-                self.episode_time_steps = []
-
-            def items(self, prefix=""):
-                if self.episode_rewards:
-                    yield prefix + "rewards", np.mean(self.episode_rewards)
-                if self.episode_time_steps:
-                    yield prefix + "time_steps", np.mean(self.episode_time_steps)
-
         def make_vec_envs(evaluation):
             def env_thunk(rank):
                 return self.make_env(
@@ -185,7 +157,7 @@ class Trainer(tune.Trainable):
         )
 
         ppo = self.ppo = PPO(agent=agent, num_batch=num_batch, **ppo_args)
-        train_counter = EpochCounter()
+        train_counter = self.build_epoch_counter(num_processes)
 
         if load_path:
             self._restore(load_path)
@@ -196,7 +168,7 @@ class Trainer(tune.Trainable):
             rollouts.to(self.device)
 
         for i in range(num_epochs):
-            eval_counter = EpochCounter()
+            eval_counter = self.build_epoch_counter(num_processes)
             if eval_interval and not no_eval and i % eval_interval == 0:
                 # vec_norm = get_vec_normalize(eval_envs)
                 # if vec_norm is not None:
@@ -222,7 +194,9 @@ class Trainer(tune.Trainable):
                         num_steps=eval_steps,
                     ):
                         eval_counter.update(
-                            reward=epoch_output.reward, done=epoch_output.done
+                            reward=epoch_output.reward,
+                            done=epoch_output.done,
+                            info=epoch_output.infos,
                         )
                 eval_envs.close()
 
@@ -235,7 +209,11 @@ class Trainer(tune.Trainable):
                 envs=train_envs,
                 num_steps=train_steps,
             ):
-                train_counter.update(reward=epoch_output.reward, done=epoch_output.done)
+                train_counter.update(
+                    reward=epoch_output.reward,
+                    done=epoch_output.done,
+                    info=epoch_output.infos,
+                )
                 rollouts.insert(
                     obs=epoch_output.obs,
                     recurrent_hidden_states=epoch_output.act.rnn_hxs,
@@ -264,6 +242,9 @@ class Trainer(tune.Trainable):
                     **dict(eval_counter.items(prefix="eval_")),
                 )
                 train_counter.reset()
+
+    def build_epoch_counter(self, num_processes):
+        return EpochCounter(num_processes)
 
     @staticmethod
     def process_infos(episode_counter, done, infos, **act_log):
