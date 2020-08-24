@@ -80,7 +80,6 @@ class Trainer(tune.Trainable):
         num_epochs: int,
         num_processes: int,
         ppo_args: dict,
-        render: bool,
         render_eval: bool,
         rollouts_args: dict,
         seed: int,
@@ -88,8 +87,9 @@ class Trainer(tune.Trainable):
         train_steps: int,
         eval_interval: int = None,
         eval_steps: int = None,
-        no_eval=False,
-        load_path=None,
+        no_eval: bool = False,
+        load_path: Path = None,
+        render: bool = False,
     ):
         # Properly restrict pytorch to not consume extra resources.
         #  - https://github.com/pytorch/pytorch/issues/975

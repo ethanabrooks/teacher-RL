@@ -6,7 +6,6 @@ import torch
 
 from common.vec_env import VecEnvWrapper
 from common.vec_env.vec_normalize import VecNormalize as VecNormalize_
-from rl_utils import onehot
 
 
 class FlattenObs(gym.ObservationWrapper):
