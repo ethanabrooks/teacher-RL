@@ -169,7 +169,7 @@ class Trainer(tune.Trainable):
         # reproducibility
         set_seeds(cuda, cuda_deterministic, seed)
 
-        self.device = self.get_device() if cuda else "cpu"
+        self.device = "cuda" if cuda else "cpu"
         print("Using device", self.device)
 
         train_envs = make_vec_envs(evaluation=False)
