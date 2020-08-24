@@ -93,7 +93,7 @@ def add_arguments(parser):
         "--entropy-coef", type=float, help="entropy term coefficient", required=True
     )
     agent_parser.add_argument("--hidden-size", type=int, required=True)
-    agent_parser.add_argument("--num-layers", type=int)
+    agent_parser.add_argument("--num-layers", type=int, required=True)
     agent_parser.add_argument("--recurrent", action="store_true")
 
     ppo_parser = parser.add_argument_group("ppo_args")
@@ -136,5 +136,4 @@ def add_arguments(parser):
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser()
     add_arguments(PARSER)
-    args = hierarchical_parse_args(PARSER)
-    Trainer.main(**args)
+    Trainer.main(**vars(PARSER.parse_args()))

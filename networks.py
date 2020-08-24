@@ -26,20 +26,26 @@ class Agent(nn.Module):
         super(Agent, self).__init__()
         self.entropy_coef = entropy_coef
         self.recurrent_module = self.build_recurrent_module(
-            hidden_size, network_args, obs_spaces, recurrent
+            hidden_size, obs_spaces, recurrent, **network_args
         )
 
         if isinstance(action_space, Discrete):
             num_outputs = action_space.n
             self.dist = Categorical(self.recurrent_module.output_size, num_outputs)
+            self.min_action = 0
+            self.max_action = action_space.n
         elif isinstance(action_space, Box):
             num_outputs = action_space.shape[0]
             self.dist = DiagGaussian(self.recurrent_module.output_size, num_outputs)
+            self.min_action = torch.tensor(action_space.low)
+            self.max_action = torch.tensor(action_space.high)
         else:
             raise NotImplementedError
         self.continuous = isinstance(action_space, Box)
 
-    def build_recurrent_module(self, hidden_size, network_args, obs_spaces, recurrent):
+    def build_recurrent_module(
+        self, hidden_size, obs_spaces, recurrent, **network_args
+    ):
         if len(obs_spaces) == 3:
             return CNNBase(
                 *obs_spaces,
@@ -80,14 +86,14 @@ class Agent(nn.Module):
                 action = dist.mode()
             else:
                 action = dist.sample()
-        else:
-            action = action[:, 0]
+        # else:
+        #     action = action[:, 0]
 
         action_log_probs = dist.log_probs(action)
         entropy = dist.entropy().mean()
         return AgentOutputs(
             value=value,
-            action=action,
+            action=torch.min(torch.max(action, self.min_action), self.max_action),
             action_log_probs=action_log_probs,
             aux_loss=-self.entropy_coef * entropy,
             dist=dist,

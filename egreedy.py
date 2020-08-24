@@ -11,12 +11,9 @@ Created on Tue Sep 11 17:00:29 2018
 """
 
 
-class UCB:
+class EGreedy:
     def __init__(self, seed=0):
         self.random, _ = seeding.np_random(seed)
-
-    def argmax(self, x: np.ndarray):
-        return int(self.random.choice(np.arange(x.size)[x == x.max()]))
 
     def train_loop(self, dataset: np.ndarray):
         # Implementing Upper Bound Confidence
@@ -27,26 +24,24 @@ class UCB:
         arange = np.arange(n)
 
         # first sample each
-        c = None
+        e = 1
         for i in range(d):
             rewards[:, i] = dataset[i, :, i]
-            c = yield i * np.ones(n), dataset[i, :, i]
+            e = yield i * np.ones(n), dataset[i, :, i]
 
         # implementation in vectorized form
-        for i, data, in enumerate(dataset[d:], start=d):
+        for i, data in enumerate(dataset[d:], start=d):
             r = rewards / choices
-            if c > 1:
-                rewards = np.zeros((n, d))
-                arange = np.arange(n)
-                choice = np.random.choice(d, size=n)
-            else:
-                delta = (np.log(i + 1) / choices) ** (1 / 2)  # TODO
-                upper_bound = r + c * delta
-                choice = np.argmax(upper_bound, axis=-1)
+            # delta = (np.log(i + 1) / choices) ** (1 / e)
+            # upper_bound = r + e * delta
+            # choice = np.argmax(upper_bound, axis=-1)
+            greedy = self.random.random(size=n) > e
+            random = self.random.choice(d, size=n)
+            choice = greedy * np.argmax(r, axis=-1) + (1 - greedy) * random
             choices[arange, choice] += 1
             reward = data[arange, choice]
             rewards[arange, choice] += reward
-            c = yield choice, reward
+            e = yield choice, reward
 
 
 def main():
@@ -63,7 +58,7 @@ def main():
 
     # dataset = np.random.binomial(choices, p)
     dataset = np.random.normal(loc)
-    choices, rewards = [np.stack(x) for x in zip(*UCB().train_loop(dataset))]
+    choices, rewards = [np.stack(x) for x in zip(*EGreedy().train_loop(dataset))]
     import ipdb
 
     ipdb.set_trace()

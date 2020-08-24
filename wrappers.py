@@ -9,6 +9,21 @@ from common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 from rl_utils import onehot
 
 
+class FlattenObs(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        if isinstance(self.env.observation_space, Box):
+            self.observation_space = Box(
+                low=self.observation_space.low.flatten(),
+                high=self.observation_space.high.flatten(),
+            )
+        else:
+            raise NotImplementedError
+
+    def observation(self, observation):
+        return observation.flatten()
+
+
 # Can be used to test recurrent policies for Reacher-v2
 class MaskGoal(gym.ObservationWrapper):
     def observation(self, observation):

@@ -1,5 +1,6 @@
 import abc
 import functools
+import inspect
 import itertools
 import os
 import re
@@ -20,7 +21,7 @@ from tensorboardX import SummaryWriter
 from common.vec_env.dummy_vec_env import DummyVecEnv
 from common.vec_env.subproc_vec_env import SubprocVecEnv
 from common.vec_env.util import set_seeds
-from networks import Agent, AgentOutputs
+from networks import Agent, AgentOutputs, MLPBase
 from ppo import PPO
 from rollouts import RolloutStorage
 from utils import k_scalar_pairs, get_n_gpu, get_random_gpu
@@ -163,6 +164,7 @@ class Trainer(tune.Trainable):
             ppo_args.update(ppo_epoch=0)
             num_processes = 1
             cuda = False
+        cuda &= torch.cuda.is_available()
 
         # reproducibility
         set_seeds(cuda, cuda_deterministic, seed)
@@ -306,9 +308,36 @@ class Trainer(tune.Trainable):
         cls.name = name
         if config is None:
             config = dict()
+
         for k, v in kwargs.items():
             if v is not None:
                 config[k] = v
+
+        agent_args = {}
+        rollouts_args = {}
+        ppo_args = {}
+        other_args = {}
+        for k, v in config.items():
+            if k in ["train_steps", "num_processes", "num_batch"]:
+                other_args[k] = v
+            elif k in inspect.signature(cls.build_agent).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(Agent.__init__).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(MLPBase.__init__).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(RolloutStorage.__init__).parameters:
+                rollouts_args[k] = v
+            elif k in inspect.signature(PPO.__init__).parameters:
+                ppo_args[k] = v
+            else:
+                other_args[k] = v
+        config = dict(
+            agent_args=agent_args,
+            rollouts_args=rollouts_args,
+            ppo_args=ppo_args,
+            **other_args,
+        )
 
         if log_dir or render:
             print("Not using tune, because log_dir was specified")
