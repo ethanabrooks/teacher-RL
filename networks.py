@@ -37,8 +37,8 @@ class Agent(nn.Module):
         elif isinstance(action_space, Box):
             num_outputs = action_space.shape[0]
             self.dist = DiagGaussian(self.recurrent_module.output_size, num_outputs)
-            self.min_action = torch.tensor(action_space.low)
-            self.max_action = torch.tensor(action_space.high)
+            self.register_buffer("min_action", torch.tensor(action_space.low))
+            self.register_buffer("max_action", torch.tensor(action_space.high))
         else:
             raise NotImplementedError
         self.continuous = isinstance(action_space, Box)
