@@ -99,7 +99,7 @@ class TeacherEnv(gym.Env):
             if done:
                 i.update(baseline_return=baseline_return)
 
-            action = yield s, r, done, {}
+            action = yield s, r, done, i
 
     def render(self, mode="human"):
         pass

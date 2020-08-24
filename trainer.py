@@ -1,8 +1,7 @@
 import inspect
 import os
-import re
 import sys
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 from pathlib import Path
 from pprint import pprint
 from typing import Dict
@@ -21,7 +20,7 @@ from epoch_counter import EpochCounter
 from networks import Agent, AgentOutputs, MLPBase
 from ppo import PPO
 from rollouts import RolloutStorage
-from utils import k_scalar_pairs, get_n_gpu, get_random_gpu
+from utils import k_scalar_pairs
 from wrappers import VecPyTorch
 
 EpochOutputs = namedtuple("EpochOutputs", "obs reward done infos act masks")
@@ -36,10 +35,10 @@ class Trainer(tune.Trainable):
         self.device = None
         super().__init__(*args, **kwargs)
 
-    def _setup(self, config):
+    def setup(self, config):
         self.iterator = self.gen(**config)
 
-    def _train(self):
+    def step(self):
         return next(self.iterator)
 
     def _save(self, tmp_checkpoint_dir):
@@ -109,7 +108,6 @@ class Trainer(tune.Trainable):
             )
 
         def run_epoch(obs, rnn_hxs, masks, envs, num_steps):
-            episode_counter = defaultdict(list)
             for _ in range(num_steps):
                 with torch.no_grad():
                     act = agent(
@@ -118,7 +116,6 @@ class Trainer(tune.Trainable):
 
                 # Observe reward and next obs
                 obs, reward, done, infos = envs.step(act.action)
-                self.process_infos(episode_counter, done, infos, **act.log)
 
                 # If done then clean the history of observations.
                 masks = torch.tensor(
@@ -196,7 +193,7 @@ class Trainer(tune.Trainable):
                         eval_counter.update(
                             reward=epoch_output.reward,
                             done=epoch_output.done,
-                            info=epoch_output.infos,
+                            infos=epoch_output.infos,
                         )
                 eval_envs.close()
 
@@ -212,7 +209,7 @@ class Trainer(tune.Trainable):
                 train_counter.update(
                     reward=epoch_output.reward,
                     done=epoch_output.done,
-                    info=epoch_output.infos,
+                    infos=epoch_output.infos,
                 )
                 rollouts.insert(
                     obs=epoch_output.obs,
@@ -243,16 +240,9 @@ class Trainer(tune.Trainable):
                 )
                 train_counter.reset()
 
-    def build_epoch_counter(self, num_processes):
+    @classmethod
+    def build_epoch_counter(cls, num_processes):
         return EpochCounter(num_processes)
-
-    @staticmethod
-    def process_infos(episode_counter, done, infos, **act_log):
-        for d in infos:
-            for k, v in d.items():
-                episode_counter[k] += v if type(v) is list else [float(v)]
-        for k, v in act_log.items():
-            episode_counter[k] += v if type(v) is list else [float(v)]
 
     @staticmethod
     def build_agent(envs, **agent_args):
@@ -263,15 +253,6 @@ class Trainer(tune.Trainable):
         env = gym.make(env_id)
         env.seed(seed + rank)
         return env
-
-    def get_device(self):
-        match = re.search("\d+$", self.name)
-        if match:
-            device_num = int(match.group()) % get_n_gpu()
-        else:
-            device_num = get_random_gpu()
-
-        return torch.device("cuda", device_num)
 
     @classmethod
     def main(
