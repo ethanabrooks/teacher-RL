@@ -35,6 +35,8 @@ class EGreedy:
             # delta = (np.log(i + 1) / choices) ** (1 / e)
             # upper_bound = r + e * delta
             # choice = np.argmax(upper_bound, axis=-1)
+            if e is None:
+                e = 0.1
             greedy = self.random.random(size=n) > e
             random = self.random.choice(d, size=n)
             choice = greedy * np.argmax(r, axis=-1) + (1 - greedy) * random
