@@ -37,8 +37,6 @@ class Agent(nn.Module):
         elif isinstance(action_space, Box):
             num_outputs = action_space.shape[0]
             self.dist = DiagGaussian(self.recurrent_module.output_size, num_outputs)
-            self.register_buffer("min_action", torch.tensor(action_space.low))
-            self.register_buffer("max_action", torch.tensor(action_space.high))
         else:
             raise NotImplementedError
         self.continuous = isinstance(action_space, Box)
@@ -93,7 +91,7 @@ class Agent(nn.Module):
         entropy = dist.entropy().mean()
         return AgentOutputs(
             value=value,
-            action=torch.min(torch.max(action, self.min_action), self.max_action),
+            action=action,
             action_log_probs=action_log_probs,
             aux_loss=-self.entropy_coef * entropy,
             dist=dist,
