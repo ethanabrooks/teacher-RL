@@ -70,6 +70,7 @@ class TeacherEnv(gym.Env):
 
         done = False
         interaction = our_loop.send(action)
+        best = self.random.choice(self.choices)
 
         for t in itertools.count():
             choices, rewards = interaction
@@ -101,6 +102,8 @@ class TeacherEnv(gym.Env):
             if done:
                 i.update(baseline_return=baseline_return)
 
+            r = np.mean(action == best)
+            i = {}
             action = yield s, r, done, i
             action = np.array(
                 np.unravel_index(action, [self.choices] * self.num_bandits)
