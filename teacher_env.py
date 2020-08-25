@@ -30,9 +30,10 @@ class TeacherEnv(gym.Env):
             low=np.tile(np.array([0, min_reward]), (self.num_bandits, 1)),
             high=np.tile(np.array([choices - 1, max_reward]), (self.num_bandits, 1)),
         )
-        self.action_space = gym.spaces.Box(
-            low=np.zeros(num_bandits), high=np.ones(num_bandits)
-        )
+        # self.action_space = gym.spaces.Box(
+        #     low=np.zeros(num_bandits), high=np.ones(num_bandits)
+        # )
+        self.action_space = gym.spaces.Discrete(num_bandits * choices)
         self.bandit = EGreedy(self._seed)
         self.dataset = np.zeros((data_size, self.num_bandits, self.choices))
 
@@ -65,14 +66,15 @@ class TeacherEnv(gym.Env):
 
         next(our_loop)
         next(base_loop)
-        action = np.ones(self.num_bandits)
+        action = np.random.choice(self.choices, size=self.num_bandits)
 
         done = False
         interaction = our_loop.send(action)
 
         for t in itertools.count():
             choices, rewards = interaction
-            baseline_actions, baseline_rewards = base_loop.send(0.1)
+            # baseline_actions, baseline_rewards = base_loop.send(0.1) # TODO
+            baseline_actions, baseline_rewards = base_loop.send(action)
             chosen_means = loc[t][
                 np.arange(self.num_bandits), choices.astype(int).flatten()
             ].reshape(self.num_bandits)
@@ -100,6 +102,9 @@ class TeacherEnv(gym.Env):
                 i.update(baseline_return=baseline_return)
 
             action = yield s, r, done, i
+            action = np.array(
+                np.unravel_index(action, [self.choices] * self.num_bandits)
+            )
 
     def render(self, mode="human"):
         pass
