@@ -117,9 +117,8 @@ class Trainer(tune.Trainable):
                         inputs=obs, rnn_hxs=rnn_hxs, masks=masks
                     )  # type: AgentOutputs
 
-                # clamp continuous actions
+                action = envs.preprocess(act.action)
                 # Observe reward and next obs
-                action = envs.clamp(act.action)
                 obs, reward, done, infos = envs.step(action)
 
                 # If done then clean the history of observations.
