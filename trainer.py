@@ -25,6 +25,7 @@ from ppo import PPO
 from rollouts import RolloutStorage
 from utils import k_scalar_pairs
 from wrappers import VecPyTorch
+import itertools
 
 EpochOutputs = namedtuple("EpochOutputs", "obs reward done infos act masks")
 
@@ -76,7 +77,6 @@ class Trainer(tune.Trainable):
         log_interval: int,
         normalize: float,
         num_batch: int,
-        num_epochs: int,
         num_processes: int,
         ppo_args: dict,
         render_eval: bool,
@@ -169,7 +169,7 @@ class Trainer(tune.Trainable):
             rollouts.to(self.device)
 
         rollouts.obs[0].copy_(train_envs.reset())
-        for i in range(num_epochs):
+        for i in itertools.count():
             eval_counter = self.build_epoch_counter(num_processes)
             if eval_interval and not no_eval and i % eval_interval == 0:
                 # vec_norm = get_vec_normalize(eval_envs)
@@ -267,6 +267,7 @@ class Trainer(tune.Trainable):
         name,
         config,
         render,
+        num_epochs,
         save_interval=None,
         **kwargs,
     ):
@@ -340,5 +341,6 @@ class Trainer(tune.Trainable):
                 name=name,
                 config=config,
                 resources_per_trial=resources_per_trial,
+                stop=dict(training_iteration=num_epochs),
                 **kwargs,
             )
