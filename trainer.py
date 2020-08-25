@@ -97,7 +97,7 @@ class Trainer(tune.Trainable):
         def make_vec_envs(evaluation):
             def env_thunk(rank):
                 return self.make_env(
-                    seed=seed, rank=rank, evaluation=evaluation, env_id=env_id
+                    seed=int(seed), rank=rank, evaluation=evaluation, env_id=env_id
                 )
 
             env_fns = [lambda: env_thunk(i) for i in range(num_processes)]
