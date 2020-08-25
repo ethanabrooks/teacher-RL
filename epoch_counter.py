@@ -29,8 +29,8 @@ class EpochCounter:
 
     def items(self, prefix=""):
         if self.episode_rewards:
-            yield prefix + "episode_rewards", np.mean(self.episode_rewards)
+            yield prefix + "epoch_returns", np.mean(self.episode_rewards)
         if self.episode_time_steps:
-            yield prefix + "episode_time_steps", np.mean(self.episode_time_steps)
+            yield prefix + "epoch_time_steps", np.mean(self.episode_time_steps)
         for k, vs in self.infos.items():
             yield prefix + k, np.mean(vs)

@@ -323,8 +323,6 @@ class Trainer(tune.Trainable):
         else:
             local_mode = num_samples is None
             ray.init(dashboard_host="127.0.0.1", local_mode=local_mode)
-            metric = "final_reward"
-
             resources_per_trial = dict(gpu=gpus_per_trial, cpu=cpus_per_trial)
             kwargs = dict()
 
@@ -332,7 +330,7 @@ class Trainer(tune.Trainable):
                 print("Using local mode because num_samples is None")
             else:
                 kwargs = dict(
-                    search_alg=HyperOptSearch(config, metric=metric),
+                    search_alg=HyperOptSearch(config, metric="epoch_returns"),
                     num_samples=num_samples,
                 )
 
