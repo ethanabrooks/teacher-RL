@@ -42,4 +42,15 @@ search = dict(
     clip_param=hp.choice("clip_param", [0.1, 0.2]),
     ppo_epoch=hp.choice("ppo_epoch", [1, 2, 4, 5, 7]),
 )
-configs = dict(search=search)
+pendulum = dict(
+    learning_rate=0.01,
+    seed=0,
+    train_steps=20,
+    entropy_coef=0.01,
+    hidden_size=128,
+    num_layers=2,
+    use_gae=True,
+    clip_param=0.2,
+    ppo_epoch=2,
+)
+configs = dict(search=search, pendulum=pendulum)

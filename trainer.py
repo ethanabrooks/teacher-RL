@@ -9,6 +9,8 @@ from typing import Dict
 import gym
 import ray
 import torch
+from gym.spaces import Box
+
 from configs import configs
 from ray import tune
 from ray.tune.suggest.hyperopt import HyperOptSearch
@@ -97,7 +99,7 @@ class Trainer(tune.Trainable):
         def make_vec_envs(evaluation):
             def env_thunk(rank):
                 return self.make_env(
-                    seed=seed, rank=rank, evaluation=evaluation, env_id=env_id
+                    seed=int(seed), rank=rank, evaluation=evaluation, env_id=env_id
                 )
 
             env_fns = [lambda: env_thunk(i) for i in range(num_processes)]
@@ -115,8 +117,10 @@ class Trainer(tune.Trainable):
                         inputs=obs, rnn_hxs=rnn_hxs, masks=masks
                     )  # type: AgentOutputs
 
+                # clamp continuous actions
                 # Observe reward and next obs
-                obs, reward, done, infos = envs.step(act.action)
+                action = envs.clamp(act.action)
+                obs, reward, done, infos = envs.step(action)
 
                 # If done then clean the history of observations.
                 masks = torch.tensor(

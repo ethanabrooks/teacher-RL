@@ -66,6 +66,11 @@ class VecPyTorch(VecEnvWrapper):
         super(VecPyTorch, self).__init__(venv)
         self.device = "cpu"
         # TODO: Fix data types
+        self.action_bounds = (
+            (torch.tensor(self.action_space.low), torch.tensor(self.action_space.high))
+            if isinstance(self.action_space, Box)
+            else None
+        )
 
     @staticmethod
     def extract_numpy(obs):
@@ -84,7 +89,7 @@ class VecPyTorch(VecEnvWrapper):
         return torch.from_numpy(obs).float().to(self.device)
 
     def step_async(self, actions):
-        actions = actions.squeeze(1).cpu().numpy()
+        actions = actions.cpu().numpy()
         self.venv.step_async(actions)
 
     def step_wait(self):
@@ -97,6 +102,9 @@ class VecPyTorch(VecEnvWrapper):
     def to(self, device):
         self.device = device
         self.venv.to(device)
+        if self.action_bounds is not None:
+            for tensor in self.action_bounds:
+                tensor.to(device)
 
     def evaluate(self):
         self.venv.evaluate()
@@ -106,6 +114,12 @@ class VecPyTorch(VecEnvWrapper):
 
     def increment_curriculum(self):
         self.venv.increment_curriculum()
+
+    def clamp(self, action):
+        if self.action_bounds is not None:
+            low, high = self.action_bounds
+            action = torch.min(torch.max(action, low), high)
+        return action
 
 
 class VecNormalize(VecNormalize_):
