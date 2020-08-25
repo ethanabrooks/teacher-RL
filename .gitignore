@@ -106,13 +106,7 @@ trained_models/
 MUJOCO_LOG.TXT
 .runs
 .runsrc
-run.json
 runs.db
-cartpole.json
-baseline.json
 plot.png
-exp.json
-run2.json
-instructions.json
 run.zsh
 condaenv.o6eafk7y.requirements.txt
