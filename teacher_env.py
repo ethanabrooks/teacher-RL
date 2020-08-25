@@ -70,7 +70,7 @@ class TeacherEnv(gym.Env):
 
         done = False
         interaction = our_loop.send(action)
-        best = self.random.choice(self.choices)
+        best = np.zeros(self.num_bandits)
 
         for t in itertools.count():
             choices, rewards = interaction
