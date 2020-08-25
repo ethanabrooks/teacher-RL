@@ -32,15 +32,15 @@ def big_values(start, stop):
 
 
 search = dict(
-    learning_rate=hp.choice("learning_rate", small_values(2, 5) + [3e-4]),
+    learning_rate=hp.choice("learning_rate", small_values(2, 5)),
     seed=hp.randint("seed", 20),
-    train_steps=hp.choice("train_steps", [10, 20, 25, 30, 35, 40]),
+    train_steps=hp.choice("train_steps", [5, 10, 20, 25, 30, 35, 40]),
     entropy_coef=hp.choice("entropy_coef", [0.01, 0.02]),
     hidden_size=hp.choice("hidden_size", [64, 128, 256]),
-    num_layers=hp.choice("num_layers", [1, 2, 3]),
+    num_layers=hp.choice("num_layers", [1, 2]),
     use_gae=hp.choice("use_gae", [True, False]),
     clip_param=hp.choice("clip_param", [0.1, 0.2]),
-    ppo_epoch=hp.choice("ppo_epoch", [1, 2, 4, 5, 7]),
+    ppo_epoch=hp.choice("ppo_epoch", [1, 2, 4, 5, 7, 10]),
 )
 pendulum = dict(
     learning_rate=0.01,
