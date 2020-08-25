@@ -1,10 +1,11 @@
 import inspect
+import math
 import os
 import sys
 from collections import namedtuple
 from pathlib import Path
 from pprint import pprint
-from typing import Dict
+from typing import Dict, Optional
 
 import gym
 import ray
@@ -77,6 +78,7 @@ class Trainer(tune.Trainable):
         log_interval: int,
         normalize: float,
         num_batch: int,
+        num_epochs: Optional[int],
         num_processes: int,
         ppo_args: dict,
         render_eval: bool,
@@ -147,6 +149,7 @@ class Trainer(tune.Trainable):
 
         train_envs = make_vec_envs(evaluation=False)
         train_envs.to(self.device)
+
         agent = self.agent = self.build_agent(envs=train_envs, **agent_args)
         rollouts = RolloutStorage(
             num_steps=train_steps,
@@ -169,6 +172,7 @@ class Trainer(tune.Trainable):
             rollouts.to(self.device)
 
         rollouts.obs[0].copy_(train_envs.reset())
+        training_iteration = 0
         for i in itertools.count():
             eval_counter = self.build_epoch_counter(num_processes)
             if eval_interval and not no_eval and i % eval_interval == 0:
@@ -236,6 +240,9 @@ class Trainer(tune.Trainable):
             rollouts.after_update()
 
             if i % log_interval == 0:
+                training_iteration += 1
+                if training_iteration == num_epochs:
+                    train_envs.close()
                 yield dict(
                     **train_results,
                     **dict(train_counter.items()),
@@ -306,9 +313,9 @@ class Trainer(tune.Trainable):
         )
 
         if log_dir or render:
+            config.update(render=render, num_epochs=None)
             print("Not using tune, because log_dir was specified")
             writer = SummaryWriter(logdir=str(log_dir))
-            config.update(render=render)
             trainer = cls(config)
             for i, result in enumerate(trainer.loop()):
                 pprint(result)
@@ -321,6 +328,7 @@ class Trainer(tune.Trainable):
                 ):
                     trainer._save(log_dir)
         else:
+            config.update(render=False, num_epochs=num_epochs)
             local_mode = num_samples is None
             ray.init(dashboard_host="127.0.0.1", local_mode=local_mode)
             resources_per_trial = dict(gpu=gpus_per_trial, cpu=cpus_per_trial)

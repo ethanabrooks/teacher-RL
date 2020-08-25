@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import gym
 from gym import spaces
 from gym.spaces import Box

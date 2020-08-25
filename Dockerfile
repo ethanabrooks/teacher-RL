@@ -8,6 +8,7 @@ RUN conda env create -f /tmp/environment.yml \
     && echo "source activate teacher" >> /root/.bashrc
 SHELL ["conda", "run", "-n", "teacher", "/bin/bash", "-c"]
 RUN pip install https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.9.0.dev0-cp38-cp38-manylinux1_x86_64.whl
+RUN pip install ipdb
 
 WORKDIR "/root"
 COPY . .
