@@ -103,8 +103,7 @@ class VecPyTorch(VecEnvWrapper):
         self.device = device
         self.venv.to(device)
         if self.action_bounds is not None:
-            for tensor in self.action_bounds:
-                tensor.to(device)
+            self.action_bounds = [t.to(device) for t in self.action_bounds]
 
     def evaluate(self):
         self.venv.evaluate()
@@ -115,10 +114,12 @@ class VecPyTorch(VecEnvWrapper):
     def increment_curriculum(self):
         self.venv.increment_curriculum()
 
-    def clamp(self, action):
+    def preprocess(self, action):
         if self.action_bounds is not None:
             low, high = self.action_bounds
             action = torch.min(torch.max(action, low), high)
+        if isinstance(self.action_space, spaces.Discrete):
+            action = action.squeeze(-1)
         return action
 
 
