@@ -9,6 +9,7 @@ from typing import Dict
 import gym
 import ray
 import torch
+from configs import configs
 from ray import tune
 from ray.tune.suggest.hyperopt import HyperOptSearch
 from tensorboardX import SummaryWriter
