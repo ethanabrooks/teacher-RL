@@ -330,7 +330,9 @@ class Trainer(tune.Trainable):
                 print("Using local mode because num_samples is None")
             else:
                 kwargs = dict(
-                    search_alg=HyperOptSearch(config, metric="epoch_returns"),
+                    search_alg=HyperOptSearch(
+                        config, metric=EpochCounter.last_return_name
+                    ),
                     num_samples=num_samples,
                 )
 
