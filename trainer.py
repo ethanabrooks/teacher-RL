@@ -10,9 +10,6 @@ from typing import Dict, Optional
 import gym
 import ray
 import torch
-from gym.spaces import Box
-
-from configs import configs
 from ray import tune
 from ray.tune.suggest.hyperopt import HyperOptSearch
 from tensorboardX import SummaryWriter
@@ -21,11 +18,11 @@ from common.vec_env.dummy_vec_env import DummyVecEnv
 from common.vec_env.subproc_vec_env import SubprocVecEnv
 from common.vec_env.util import set_seeds
 from epoch_counter import EpochCounter
-from networks import Agent, AgentOutputs, MLPBase
+from networks import Agent, AgentOutputs, MLPBase, CopyAgent
 from ppo import PPO
 from rollouts import RolloutStorage
 from utils import k_scalar_pairs
-from wrappers import VecPyTorch
+from wrappers import VecPyTorch, CopyWrapper
 import itertools
 
 EpochOutputs = namedtuple("EpochOutputs", "obs reward done infos act masks")
@@ -256,11 +253,16 @@ class Trainer(tune.Trainable):
 
     @staticmethod
     def build_agent(envs, **agent_args):
+        use_copy_agent = envs.unwrapped.specs[0].id == "Copy-v0"
+        if use_copy_agent:
+            return CopyAgent(envs.observation_space, envs.action_space, **agent_args)
         return Agent(envs.observation_space.shape, envs.action_space, **agent_args)
 
     @staticmethod
     def make_env(env_id, seed, rank, evaluation):
         env = gym.make(env_id)
+        if env_id == "Copy-v0":
+            env = CopyWrapper(env)
         env.seed(seed + rank)
         return env
 

@@ -217,3 +217,17 @@ def get_vec_normalize(venv):
         return get_vec_normalize(venv.venv)
 
     return None
+
+
+class CopyWrapper(gym.ActionWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        self.action_space = spaces.MultiDiscrete(
+            np.array([space.n for space in env.action_space.spaces])
+        )
+
+    def action(self, action):
+        return tuple(action)
+
+    def reverse_action(self, action):
+        return np.concatenate(action)
