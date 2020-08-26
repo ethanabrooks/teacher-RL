@@ -42,4 +42,34 @@ search = dict(
     clip_param=hp.choice("clip_param", [0.1, 0.2]),
     ppo_epoch=hp.choice("ppo_epoch", [1, 2, 4, 5, 7]),
 )
-configs = dict(search=search)
+ppo_paper_mujoco = dict(
+    learning_rate=3e-4,
+    seed=hp.randint("seed", 20),
+    train_steps=2048,
+    entropy_coef=0.01,
+    hidden_size=64,
+    num_layers=2,
+    num_batch=64,
+    use_gae=True,
+    clip_param=0.2,
+    ppo_epoch=10,
+    num_processes=128,
+)
+ppo_paper_roboschool = dict(
+    learning_rate=hp.choice("learning_rate", [3e-4, 2.5e-4, 1e-3]),
+    seed=hp.randint("seed", 20),
+    train_steps=512,
+    entropy_coef=0.01,
+    hidden_size=64,
+    num_layers=2,
+    num_batch=4096,
+    use_gae=True,
+    clip_param=0.2,
+    ppo_epoch=15,
+    num_processes=128,
+)
+configs = dict(
+    search=search,
+    ppo_paper_mujoco=ppo_paper_mujoco,
+    ppo_paper_roboschool=ppo_paper_roboschool,
+)
