@@ -19,28 +19,17 @@ def copy_args(d, prefix):
         yield prefix + k, v
 
 
-def small_values(start, stop):
-    return [j for i in range(start, stop) for j in ((10 ** -i), 5 * (10 ** -i))]
-
-
-def medium_values(start, stop):
-    return [2 ** i for i in range(start, stop)]
-
-
-def big_values(start, stop):
-    return [j for i in range(start, stop) for j in ((10 ** i), 5 * (10 ** i))]
-
-
 search = dict(
-    learning_rate=hp.choice("learning_rate", small_values(2, 5) + [3e-4]),
+    learning_rate=hp.choice("learning_rate", [7e-4, 3e-4, 2.5e-4, 1e-3]),
     seed=hp.randint("seed", 20),
-    train_steps=hp.choice("train_steps", [10, 20, 25, 30, 35, 40]),
+    train_steps=hp.choice("train_steps", [256, 512, 1024, 2048]),
     entropy_coef=hp.choice("entropy_coef", [0.01, 0.02]),
-    hidden_size=hp.choice("hidden_size", [64, 128, 256]),
+    hidden_size=hp.choice("hidden_size", [64, 128]),
     num_layers=hp.choice("num_layers", [1, 2, 3]),
-    use_gae=hp.choice("use_gae", [True, False]),
-    clip_param=hp.choice("clip_param", [0.1, 0.2]),
-    ppo_epoch=hp.choice("ppo_epoch", [1, 2, 4, 5, 7]),
+    num_batch=hp.choice("num_batch", [64, 128, 256, 512, 1024, 2048, 4096]),
+    use_gae=True,
+    clip_param=0.2,
+    ppo_epoch=hp.choice("ppo_epoch", [5, 10, 15, 20, 25]),
 )
 ppo_paper_mujoco = dict(
     learning_rate=3e-4,
