@@ -145,107 +145,111 @@ class Trainer(tune.Trainable):
         print("Using device", self.device)
 
         train_envs = make_vec_envs(evaluation=False)
-        train_envs.to(self.device)
+        try:
+            train_envs.to(self.device)
 
-        agent = self.agent = self.build_agent(envs=train_envs, **agent_args)
-        rollouts = RolloutStorage(
-            num_steps=train_steps,
-            num_processes=num_processes,
-            obs_space=train_envs.observation_space,
-            action_space=train_envs.action_space,
-            recurrent_hidden_state_size=agent.recurrent_hidden_state_size,
-            **rollouts_args,
-        )
+            agent = self.agent = self.build_agent(envs=train_envs, **agent_args)
+            rollouts = RolloutStorage(
+                num_steps=train_steps,
+                num_processes=num_processes,
+                obs_space=train_envs.observation_space,
+                action_space=train_envs.action_space,
+                recurrent_hidden_state_size=agent.recurrent_hidden_state_size,
+                **rollouts_args,
+            )
 
-        ppo = self.ppo = PPO(agent=agent, num_batch=num_batch, **ppo_args)
-        train_counter = self.build_epoch_counter(num_processes)
+            ppo = self.ppo = PPO(agent=agent, num_batch=num_batch, **ppo_args)
+            train_counter = self.build_epoch_counter(num_processes)
 
-        if load_path:
-            self._restore(load_path)
+            if load_path:
+                self._restore(load_path)
 
-        # copy to device
-        if cuda:
-            agent.to(self.device)
-            rollouts.to(self.device)
+            # copy to device
+            if cuda:
+                agent.to(self.device)
+                rollouts.to(self.device)
 
-        rollouts.obs[0].copy_(train_envs.reset())
-        training_iteration = 0
-        for i in itertools.count():
-            eval_counter = self.build_epoch_counter(num_processes)
-            if eval_interval and not no_eval and i % eval_interval == 0:
-                # vec_norm = get_vec_normalize(eval_envs)
-                # if vec_norm is not None:
-                #     vec_norm.eval()
-                #     vec_norm.ob_rms = get_vec_normalize(envs).ob_rms
+            obs = train_envs.reset()
+            rollouts.obs[0].copy_(obs)
+            training_iteration = 0
+            for i in itertools.count():
+                eval_counter = self.build_epoch_counter(num_processes)
+                if eval_interval and not no_eval and i % eval_interval == 0:
+                    # vec_norm = get_vec_normalize(eval_envs)
+                    # if vec_norm is not None:
+                    #     vec_norm.eval()
+                    #     vec_norm.ob_rms = get_vec_normalize(envs).ob_rms
 
-                # self.envs.evaluate()
-                eval_masks = torch.zeros(num_processes, 1, device=self.device)
-                eval_envs = make_vec_envs(evaluation=True)
-                eval_envs.to(self.device)
-                with agent.recurrent_module.evaluating(eval_envs.observation_space):
-                    eval_recurrent_hidden_states = torch.zeros(
-                        num_processes,
-                        agent.recurrent_hidden_state_size,
-                        device=self.device,
+                    # self.envs.evaluate()
+                    eval_masks = torch.zeros(num_processes, 1, device=self.device)
+                    eval_envs = make_vec_envs(evaluation=True)
+                    eval_envs.to(self.device)
+                    with agent.recurrent_module.evaluating(eval_envs.observation_space):
+                        eval_recurrent_hidden_states = torch.zeros(
+                            num_processes,
+                            agent.recurrent_hidden_state_size,
+                            device=self.device,
+                        )
+
+                        for epoch_output in run_epoch(
+                            obs=eval_envs.reset(),
+                            rnn_hxs=eval_recurrent_hidden_states,
+                            masks=eval_masks,
+                            envs=eval_envs,
+                            num_steps=eval_steps,
+                        ):
+                            eval_counter.update(
+                                reward=epoch_output.reward,
+                                done=epoch_output.done,
+                                infos=epoch_output.infos,
+                            )
+                    eval_envs.close()
+
+                for epoch_output in run_epoch(
+                    obs=rollouts.obs[0],
+                    rnn_hxs=rollouts.recurrent_hidden_states[0],
+                    masks=rollouts.masks[0],
+                    envs=train_envs,
+                    num_steps=train_steps,
+                ):
+                    train_counter.update(
+                        reward=epoch_output.reward,
+                        done=epoch_output.done,
+                        infos=epoch_output.infos,
+                    )
+                    rollouts.insert(
+                        obs=epoch_output.obs,
+                        recurrent_hidden_states=epoch_output.act.rnn_hxs,
+                        actions=epoch_output.act.action,
+                        action_log_probs=epoch_output.act.action_log_probs,
+                        values=epoch_output.act.value,
+                        rewards=epoch_output.reward,
+                        masks=epoch_output.masks,
                     )
 
-                    for epoch_output in run_epoch(
-                        obs=eval_envs.reset(),
-                        rnn_hxs=eval_recurrent_hidden_states,
-                        masks=eval_masks,
-                        envs=eval_envs,
-                        num_steps=eval_steps,
-                    ):
-                        eval_counter.update(
-                            reward=epoch_output.reward,
-                            done=epoch_output.done,
-                            infos=epoch_output.infos,
-                        )
-                eval_envs.close()
+                with torch.no_grad():
+                    next_value = agent.get_value(
+                        rollouts.obs[-1],
+                        rollouts.recurrent_hidden_states[-1],
+                        rollouts.masks[-1],
+                    )
 
-            for epoch_output in run_epoch(
-                obs=rollouts.obs[0],
-                rnn_hxs=rollouts.recurrent_hidden_states[0],
-                masks=rollouts.masks[0],
-                envs=train_envs,
-                num_steps=train_steps,
-            ):
-                train_counter.update(
-                    reward=epoch_output.reward,
-                    done=epoch_output.done,
-                    infos=epoch_output.infos,
-                )
-                rollouts.insert(
-                    obs=epoch_output.obs,
-                    recurrent_hidden_states=epoch_output.act.rnn_hxs,
-                    actions=epoch_output.act.action,
-                    action_log_probs=epoch_output.act.action_log_probs,
-                    values=epoch_output.act.value,
-                    rewards=epoch_output.reward,
-                    masks=epoch_output.masks,
-                )
+                rollouts.compute_returns(next_value.detach())
+                train_results = ppo.update(rollouts)
+                rollouts.after_update()
 
-            with torch.no_grad():
-                next_value = agent.get_value(
-                    rollouts.obs[-1],
-                    rollouts.recurrent_hidden_states[-1],
-                    rollouts.masks[-1],
-                )
-
-            rollouts.compute_returns(next_value.detach())
-            train_results = ppo.update(rollouts)
-            rollouts.after_update()
-
-            if i % log_interval == 0:
-                training_iteration += 1
-                if training_iteration == num_epochs:
-                    train_envs.close()
-                yield dict(
-                    **train_results,
-                    **dict(train_counter.items()),
-                    **dict(eval_counter.items(prefix="eval_")),
-                )
-                train_counter.reset()
+                if i % log_interval == 0:
+                    training_iteration += 1
+                    if training_iteration == num_epochs:
+                        train_envs.close()
+                    yield dict(
+                        **train_results,
+                        **dict(train_counter.items()),
+                        **dict(eval_counter.items(prefix="eval_")),
+                    )
+                    train_counter.reset()
+        finally:
+            train_envs.close()
 
     @classmethod
     def build_epoch_counter(cls, num_processes):
