@@ -257,9 +257,6 @@ class Trainer(tune.Trainable):
 
     @staticmethod
     def build_agent(envs, **agent_args):
-        use_copy_agent = envs.unwrapped.specs[0].id == "Copy-v0"
-        if use_copy_agent:
-            return CopyAgent(envs.observation_space, envs.action_space, **agent_args)
         return Agent(envs.observation_space.shape, envs.action_space, **agent_args)
 
     @staticmethod

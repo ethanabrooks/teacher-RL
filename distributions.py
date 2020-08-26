@@ -1,8 +1,12 @@
 # third party
+from abc import ABC
+
 import torch
 import torch.nn as nn
 
 # first party
+from torch.distributions import Distribution
+
 from utils import AddBias, init, init_normc_
 
 """
@@ -64,3 +68,22 @@ class DiagGaussian(nn.Module):
         zeros = torch.zeros_like(action_mean)
         action_logstd = self.logstd(zeros)
         return FixedNormal(action_mean, action_logstd.exp())
+
+
+class JointDist(Distribution, ABC):
+    def log_probs(self, value):
+        values = torch.split(value, 1, dim=-1)
+        return sum(d.log_probs(v) for d, v in zip(self.dists, values))
+
+    def entropy(self):
+        return sum(d.entropy() for d in self.dists)
+
+    def mode(self):
+        return torch.cat([d.mode() for d in self.dists], dim=-1)
+
+    def sample(self, sample_shape=torch.Size()):
+        return torch.cat([d.sample() for d in self.dists], dim=-1)
+
+    def __init__(self, *dists):
+        super().__init__()
+        self.dists = dists
