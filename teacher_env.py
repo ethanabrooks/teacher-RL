@@ -27,12 +27,17 @@ class TeacherEnv(gym.Env):
         self.max_reward = max_reward
         self.data_size = data_size
         self.observation_space = gym.spaces.Box(
-            low=np.tile(np.array([0, min_reward]), (self.num_bandits, 1)),
-            high=np.tile(np.array([choices - 1, max_reward]), (self.num_bandits, 1)),
-            dtype=np.float32,
+            low=np.tile(
+                np.array([0, min_reward], dtype=np.float32), (self.num_bandits, 1)
+            ),
+            high=np.tile(
+                np.array([choices - 1, max_reward], dtype=np.float32),
+                (self.num_bandits, 1),
+            ),
         )
         self.action_space = gym.spaces.Box(
-            low=np.zeros(num_bandits), high=np.ones(num_bandits), dtype=np.float32,
+            low=np.zeros(num_bandits, dtype=np.float32),
+            high=np.ones(num_bandits, dtype=np.float32),
         )
         self.bandit = EGreedy(self._seed)
         self.dataset = np.zeros((data_size, self.num_bandits, self.choices))
