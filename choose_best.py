@@ -26,11 +26,9 @@ class ChooseBestEnv(gym.Env):
         self.min_reward = min_reward
         self.max_reward = max_reward
         self.data_size = data_size
-        self.observation_space = gym.spaces.Tuple(
-            (
-                gym.spaces.Discrete(choices),
-                gym.spaces.Box(low=min_reward, high=max_reward, dtype=np.float32),
-            )
+        self.observation_space = gym.spaces.Box(
+            low=np.array([0, min_reward], dtype=np.float32),
+            high=np.array([1 + self.choices, max_reward], dtype=np.float32),
         )
         self.action_space = gym.spaces.Discrete(choices)
         self.bandit = EGreedy(self._seed)
