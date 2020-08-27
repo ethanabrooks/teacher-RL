@@ -61,7 +61,7 @@ class TeacherEnv(gym.Env):
     def _generator(self) -> Generator:
         size = self.num_bandits, self.choices
         # half = int(len(self.dataset) // 2)
-        loc = np.random.random(size=(len(self.dataset), *size))
+        loc = np.zeros((len(self.dataset), *size))
         loc[:, :, int(self.random.choice(self.choices))] = 1
         # half = len(self.dataset) - half
         # loc2 = np.random.normal(size=(half, *size), scale=1)
