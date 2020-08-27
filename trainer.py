@@ -38,6 +38,32 @@ class Trainer(tune.Trainable):
         super().__init__(*args, **kwargs)
 
     def setup(self, config):
+        agent_args = {}
+        rollouts_args = {}
+        ppo_args = {}
+        other_args = {}
+        for k, v in config.items():
+            if k in ["train_steps", "num_processes", "num_batch"]:
+                other_args[k] = v
+            elif k in inspect.signature(self.build_agent).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(Agent.__init__).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(MLPBase.__init__).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(RolloutStorage.__init__).parameters:
+                rollouts_args[k] = v
+            elif k in inspect.signature(PPO.__init__).parameters:
+                ppo_args[k] = v
+            else:
+                other_args[k] = v
+        config = dict(
+            agent_args=agent_args,
+            rollouts_args=rollouts_args,
+            ppo_args=ppo_args,
+            **other_args,
+        )
+
         self.iterator = self.gen(**config)
 
     def step(self):
@@ -288,32 +314,6 @@ class Trainer(tune.Trainable):
         for k, v in kwargs.items():
             if v is not None:
                 config[k] = v
-
-        agent_args = {}
-        rollouts_args = {}
-        ppo_args = {}
-        other_args = {}
-        for k, v in config.items():
-            if k in ["train_steps", "num_processes", "num_batch"]:
-                other_args[k] = v
-            elif k in inspect.signature(cls.build_agent).parameters:
-                agent_args[k] = v
-            elif k in inspect.signature(Agent.__init__).parameters:
-                agent_args[k] = v
-            elif k in inspect.signature(MLPBase.__init__).parameters:
-                agent_args[k] = v
-            elif k in inspect.signature(RolloutStorage.__init__).parameters:
-                rollouts_args[k] = v
-            elif k in inspect.signature(PPO.__init__).parameters:
-                ppo_args[k] = v
-            else:
-                other_args[k] = v
-        config = dict(
-            agent_args=agent_args,
-            rollouts_args=rollouts_args,
-            ppo_args=ppo_args,
-            **other_args,
-        )
 
         if log_dir or render:
             config.update(render=render, num_epochs=None)
