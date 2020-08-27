@@ -43,7 +43,7 @@ class Trainer(tune.Trainable):
     def step(self):
         return next(self.iterator)
 
-    def _save(self, tmp_checkpoint_dir):
+    def save_checkpoint(self, tmp_checkpoint_dir):
         modules = dict(
             optimizer=self.ppo.optimizer, agent=self.agent
         )  # type: Dict[str, torch.nn.Module]
@@ -54,14 +54,14 @@ class Trainer(tune.Trainable):
         torch.save(dict(step=self.i, **state_dict), save_path)
         print(f"Saved parameters to {save_path}")
 
-    def _restore(self, checkpoint):
-        state_dict = torch.load(checkpoint, map_location=self.device)
+    def restore(self, checkpoint_path):
+        state_dict = torch.load(checkpoint_path, map_location=self.device)
         self.agent.load_state_dict(state_dict["agent"])
         self.ppo.optimizer.load_state_dict(state_dict["optimizer"])
         # start = state_dict.get("step", -1) + 1
         # if isinstance(self.envs.venv, VecNormalize):
         #     self.envs.venv.load_state_dict(state_dict["vec_normalize"])
-        print(f"Loaded parameters from {checkpoint}.")
+        print(f"Loaded parameters from {checkpoint_path}.")
 
     def loop(self):
         yield from self.iterator
