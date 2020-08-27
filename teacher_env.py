@@ -29,9 +29,10 @@ class TeacherEnv(gym.Env):
         self.observation_space = gym.spaces.Box(
             low=np.tile(np.array([0, min_reward]), (self.num_bandits, 1)),
             high=np.tile(np.array([choices - 1, max_reward]), (self.num_bandits, 1)),
+            dtype=np.float32,
         )
         self.action_space = gym.spaces.Box(
-            low=np.zeros(num_bandits), high=np.ones(num_bandits)
+            low=np.zeros(num_bandits), high=np.ones(num_bandits), dtype=np.float32,
         )
         self.bandit = EGreedy(self._seed)
         self.dataset = np.zeros((data_size, self.num_bandits, self.choices))
