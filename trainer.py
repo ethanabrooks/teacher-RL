@@ -315,6 +315,8 @@ class Trainer(tune.Trainable):
             if v is not None:
                 config[k] = v
 
+        if num_epochs is None:
+            num_epochs = config.get("num_epochs")
         if log_dir or render:
             config.update(render=render, num_epochs=None)
             print("Not using tune, because log_dir was specified")
