@@ -59,18 +59,17 @@ class TeacherEnv(gym.Env):
         return self.iterator.send(action)
 
     def _generator(self) -> Generator:
-        # size = self.num_bandits, self.choices
+        size = self.num_bandits, self.choices
         # half = int(len(self.dataset) // 2)
-        # loc1 = np.random.normal(size=(half, *size), scale=1)
+        loc = np.random.normal(size=(len(self.dataset), *size), scale=1e-5)
+        loc[:, :, int(self.random.choice(self.choices))] = 1
         # half = len(self.dataset) - half
         # loc2 = np.random.normal(size=(half, *size), scale=1)
         # loc = np.vstack([loc1, loc2])
-        # self.dataset = self.random.normal(loc)
-        self.dataset[:] = 0
-        self.dataset[:, :, int(self.random.choice(self.choices))] = 1
+        self.dataset = self.random.normal(loc)
         our_loop = self.bandit.train_loop(dataset=self.dataset)
         base_loop = self.bandit.train_loop(dataset=self.dataset)
-        # optimal = loc.max(axis=-1, initial=-np.inf)
+        optimal = loc.max(axis=-1, initial=-np.inf)
 
         baseline_return = np.zeros(self.num_bandits)
 
@@ -84,12 +83,12 @@ class TeacherEnv(gym.Env):
         for t in itertools.count():
             choices, rewards, reward_avg = interaction
             baseline_actions, baseline_rewards, _ = base_loop.send(0.1)
-            # chosen_means = loc[t][
-            #     np.arange(self.num_bandits), choices.astype(int).flatten()
-            # ].reshape(self.num_bandits)
-            # baseline_chosen_means = loc[t][
-            #     np.arange(self.num_bandits), baseline_actions.astype(int).flatten()
-            # ].reshape(self.num_bandits)
+            chosen_means = loc[t][
+                np.arange(self.num_bandits), choices.astype(int).flatten()
+            ].reshape(self.num_bandits)
+            baseline_chosen_means = loc[t][
+                np.arange(self.num_bandits), baseline_actions.astype(int).flatten()
+            ].reshape(self.num_bandits)
             baseline_return += np.mean(baseline_rewards)
 
             s = np.concatenate([choices, rewards, reward_avg.flatten()], axis=-1)
