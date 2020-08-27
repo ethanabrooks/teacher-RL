@@ -9,7 +9,7 @@ from main import add_arguments
 from wrappers import TupleActionWrapper
 
 
-def main(size, **kwargs):
+def main(**kwargs):
     class CopyTrainer(Trainer):
         def make_env(self, env_id, seed, rank, evaluation):
             assert env_id == "Copy-v0"
@@ -24,6 +24,5 @@ def main(size, **kwargs):
 
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser()
-    PARSER.add_argument("--size", "-s", type=int, required=True)
     add_arguments(PARSER)
     main(**vars(PARSER.parse_args()))
