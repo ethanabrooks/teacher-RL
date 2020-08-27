@@ -67,7 +67,7 @@ class TeacherEnv(gym.Env):
         # loc = np.vstack([loc1, loc2])
         # self.dataset = self.random.normal(loc)
         self.dataset[:] = 0
-        self.dataset[:, :, 0] = 1
+        self.dataset[:, :, int(self.random.choice(self.choices))] = 1
         our_loop = self.bandit.train_loop(dataset=self.dataset)
         base_loop = self.bandit.train_loop(dataset=self.dataset)
         # optimal = loc.max(axis=-1, initial=-np.inf)
