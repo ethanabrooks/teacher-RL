@@ -31,7 +31,7 @@ search = dict(
     clip_param=hp.choice("clip_param", [0.1, 0.2]),
     ppo_epoch=hp.choice("ppo_epoch", [5, 10, 15, 20, 25]),
 )
-continuous_search = dict(
+search_continuous = dict(
     learning_rate=hp.choice("learning_rate", [7e-4, 3e-4, 2.5e-4, 1e-3]),
     seed=hp.randint("seed", 20),
     train_steps=hp.choice("train_steps", [256, 512, 1024, 2048]),
@@ -71,7 +71,7 @@ ppo_paper_roboschool = dict(
 )
 configs = dict(
     search=search,
-    continuous_search=continuous_search,
+    search_continuous=search_continuous,
     ppo_paper_mujoco=ppo_paper_mujoco,
     ppo_paper_roboschool=ppo_paper_roboschool,
 )
