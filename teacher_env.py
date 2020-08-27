@@ -94,9 +94,9 @@ class TeacherEnv(gym.Env):
             s = np.concatenate([choices, rewards, reward_avg.flatten()], axis=-1)
             r = np.mean(rewards)
             i = dict(
-                # baseline_regret=np.mean(optimal[t : t + 1] - baseline_chosen_means),
+                baseline_regret=np.mean(optimal[t : t + 1] - baseline_chosen_means),
                 baseline_rewards=np.mean(baseline_rewards),
-                # regret=np.mean(optimal[t : t + 1] - chosen_means),
+                regret=np.mean(optimal[t : t + 1] - chosen_means),
                 rewards=np.mean(rewards),
                 coefficient=np.mean(action).item(),
             )
