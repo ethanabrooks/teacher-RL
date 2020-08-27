@@ -304,6 +304,7 @@ class Trainer(tune.Trainable):
         config,
         render,
         num_epochs,
+        loggers=None,
         save_interval=None,
         **kwargs,
     ):
@@ -355,5 +356,6 @@ class Trainer(tune.Trainable):
                 config=config,
                 resources_per_trial=resources_per_trial,
                 stop=dict(training_iteration=num_epochs),
+                loggers=loggers,
                 **kwargs,
             )
