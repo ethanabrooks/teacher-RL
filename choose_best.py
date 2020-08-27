@@ -30,7 +30,7 @@ class ChooseBestEnv(gym.Env):
             low=np.array([0, min_reward], dtype=np.float32),
             high=np.array([1 + self.choices, max_reward], dtype=np.float32),
         )
-        self.action_space = gym.spaces.Discrete(choices)
+        self.action_space = gym.spaces.Discrete(2)
         self.bandit = EGreedy(self._seed)
         self.dataset = np.zeros((data_size, self.num_bandits, self.choices))
 
@@ -51,8 +51,12 @@ class ChooseBestEnv(gym.Env):
         best = self.random.choice(self.choices)
         for i in range(self.choices):
             yield (i, float(i == best)), 0, False, {}
-        action = yield (self.choices, 0), 0, False, {}
-        yield (self.choices, 0), float(action == best), True, {}
+        yield (0, self.choices), 0, False, {}
+        r = 0
+        for i in range(self.choices):
+            t = i == self.choices - 1
+            action = yield (i, 0), r, t, {}
+            r = action if i == best else 1 - action
 
     def render(self, mode="human"):
         pass
