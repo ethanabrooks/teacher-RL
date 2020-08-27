@@ -20,6 +20,18 @@ def copy_args(d, prefix):
 
 
 search = dict(
+    learning_rate=hp.choice("learning_rate", [1e-4, 2.5e-4, 5e-4, 1e-3, 5e-3, 1e-2]),
+    seed=hp.randint("seed", 20),
+    train_steps=hp.choice("train_steps", [32, 64, 128, 256]),
+    entropy_coef=hp.choice("entropy_coef", [0.01, 0.02]),
+    hidden_size=hp.choice("hidden_size", [64, 128]),
+    num_layers=hp.choice("num_layers", [1, 2, 3]),
+    num_batch=hp.choice("num_batch", [1, 2]),
+    use_gae=True,
+    clip_param=hp.choice("clip_param", [0.1, 0.2]),
+    ppo_epoch=hp.choice("ppo_epoch", [5, 10, 15, 20, 25]),
+)
+continuous_search = dict(
     learning_rate=hp.choice("learning_rate", [7e-4, 3e-4, 2.5e-4, 1e-3]),
     seed=hp.randint("seed", 20),
     train_steps=hp.choice("train_steps", [256, 512, 1024, 2048]),
@@ -28,8 +40,8 @@ search = dict(
     num_layers=hp.choice("num_layers", [1, 2, 3]),
     num_batch=hp.choice("num_batch", [1, 2]),
     use_gae=True,
-    clip_param=0.2,
-    ppo_epoch=hp.choice("ppo_epoch", [5, 10, 15, 20, 25]),
+    clip_param=hp.choice("clip_param", [0.1, 0.2]),
+    ppo_epoch=hp.choice("ppo_epoch", [1, 3, 5]),
 )
 ppo_paper_mujoco = dict(
     learning_rate=3e-4,
@@ -59,6 +71,7 @@ ppo_paper_roboschool = dict(
 )
 configs = dict(
     search=search,
+    continuous_search=continuous_search,
     ppo_paper_mujoco=ppo_paper_mujoco,
     ppo_paper_roboschool=ppo_paper_roboschool,
 )
