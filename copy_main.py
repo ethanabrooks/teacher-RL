@@ -1,16 +1,19 @@
 import argparse
 
-from copy_env import CopyEnv
+import gym
+
 from networks import CopyAgent
 from trainer import Trainer
 
 from main import add_arguments
+from wrappers import TupleActionWrapper
 
 
 def main(size, **kwargs):
     class CopyTrainer(Trainer):
         def make_env(self, env_id, seed, rank, evaluation):
-            return CopyEnv(size=size)
+            assert env_id == "Copy-v0"
+            return TupleActionWrapper(gym.make(env_id))
 
         @staticmethod
         def build_agent(envs, **agent_args):

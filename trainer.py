@@ -22,7 +22,7 @@ from networks import Agent, AgentOutputs, MLPBase, CopyAgent
 from ppo import PPO
 from rollouts import RolloutStorage
 from utils import k_scalar_pairs
-from wrappers import VecPyTorch, CopyWrapper
+from wrappers import VecPyTorch, TupleActionWrapper
 import itertools
 
 EpochOutputs = namedtuple("EpochOutputs", "obs reward done infos act masks")
@@ -289,7 +289,7 @@ class Trainer(tune.Trainable):
     def make_env(env_id, seed, rank, evaluation):
         env = gym.make(env_id)
         if env_id == "Copy-v0":
-            env = CopyWrapper(env)
+            env = TupleActionWrapper(env)
         env.seed(seed + rank)
         return env
 

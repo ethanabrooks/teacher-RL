@@ -90,6 +90,8 @@ class Agent(nn.Module):
 
         action_log_probs = dist.log_probs(action)
         entropy = dist.entropy().mean()
+        if isinstance(dist, torch.distributions.categorical.Categorical):
+            action = action.squeeze(-1)
         return AgentOutputs(
             value=value,
             action=action,
@@ -139,6 +141,30 @@ class CopyAgent(Agent):
                 return super().forward(embedding, rnn_hxs, masks)
 
         return CopyBase()
+
+
+class ChooseBestAgent(Agent):
+    def build_recurrent_module(
+        self, hidden_size, obs_spaces, recurrent, **network_args
+    ):
+        class Base(MLPBase):
+            def __init__(self):
+                super().__init__(
+                    hidden_size=hidden_size,
+                    num_inputs=hidden_size,
+                    recurrent=True,
+                    **network_args,
+                )
+                self.embedding = nn.Embedding(obs_spaces.n, hidden_size)
+
+            def forward(self, inputs, rnn_hxs, masks):
+                import ipdb
+
+                ipdb.set_trace()
+                embedding = self.embedding(inputs.long())
+                return super().forward(embedding, rnn_hxs, masks)
+
+        return Base()
 
 
 class NNBase(nn.Module):

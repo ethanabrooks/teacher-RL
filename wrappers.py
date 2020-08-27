@@ -2,7 +2,7 @@ from contextlib import contextmanager
 
 import gym
 from gym import spaces
-from gym.spaces import Box
+from gym.spaces import Box, Discrete
 import numpy as np
 import torch
 
@@ -74,14 +74,13 @@ class VecPyTorch(VecEnvWrapper):
             else None
         )
 
-    @staticmethod
-    def extract_numpy(obs):
+    def extract_numpy(self, obs):
         if isinstance(obs, dict):
             # print("VecPyTorch")
             # for k, x in obs.items():
             #     print(k, x.shape)
             return np.hstack([x.reshape(x.shape[0], -1) for x in obs.values()])
-        if not isinstance(obs, (list, tuple)):
+        elif not isinstance(obs, (list, tuple)):
             return obs
         assert len(obs) == 1
         return obs[0]
@@ -219,7 +218,7 @@ def get_vec_normalize(venv):
     return None
 
 
-class CopyWrapper(gym.ActionWrapper):
+class TupleActionWrapper(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
         self.action_space = spaces.MultiDiscrete(

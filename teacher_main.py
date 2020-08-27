@@ -1,18 +1,23 @@
 import argparse
+from abc import ABC
 
+from choose_best import ChooseBestEnv
 from main import add_arguments
-from teacher_env import TeacherEnv
+from networks import ChooseBestAgent
 from trainer import Trainer
-from wrappers import FlattenObs
 
 
 def main(choices, num_bandits, data_size, **kwargs):
-    class TeacherTrainer(Trainer):
+    class TeacherTrainer(Trainer, ABC):
         def make_env(self, env_id, seed, rank, evaluation):
-            return FlattenObs(
-                TeacherEnv(
-                    choices=choices, num_bandits=num_bandits, data_size=data_size
-                )
+            return ChooseBestEnv(
+                choices=choices, num_bandits=num_bandits, data_size=data_size
+            )
+
+        @staticmethod
+        def build_agent(envs, **agent_args):
+            return ChooseBestAgent(
+                envs.observation_space, envs.action_space, **agent_args
             )
 
     kwargs.update(recurrent=True)
