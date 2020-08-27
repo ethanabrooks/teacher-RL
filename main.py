@@ -112,12 +112,12 @@ def add_arguments(parser):
     rollouts_parser.add_argument(
         "--tau", type=float, default=0.95, help="gae parameter"
     )
-    rollouts_parser.add_argument(
-        "--use-gae",
-        action="store_true",
-        default=False,
-        help="use generalized advantage estimation",
-    )
+    # rollouts_parser.add_argument(
+    # "--use-gae",
+    # action="store_true",
+    # default=False,
+    # help="use generalized advantage estimation",
+    # )
 
     return Parsers(
         main=parser, rollouts=rollouts_parser, ppo=ppo_parser, agent=agent_parser
