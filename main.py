@@ -48,10 +48,7 @@ def add_arguments(parser):
     parser.add_argument("--cpus-per-trial", "-c", type=int, default=6)
     parser.add_argument("--num-epochs", type=int, help="number of updates to perform")
     parser.add_argument(
-        "--num-processes",
-        type=int,
-        help="how many training CPU processes to use",
-        required=True,
+        "--num-processes", type=int, help="how many training CPU processes to use",
     )
     parser.add_argument(
         "--num-samples",
