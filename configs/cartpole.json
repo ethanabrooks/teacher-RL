@@ -1,11 +1,9 @@
 {
-  "agent_args": {
-    "activation": "ReLU()",
-    "entropy_coef": 0.01,
-    "hidden_size": 64,
-    "num_layers": 3,
-    "recurrent": false
-  },
+  "activation": "ReLU()",
+  "entropy_coef": 0.01,
+  "hidden_size": 64,
+  "num_layers": 3,
+  "recurrent": false,
   "cuda": true,
   "cuda_deterministic": false,
   "env_id": "CartPole-v0",
@@ -14,21 +12,17 @@
   "num_batch": 1,
   "num_epochs": 20,
   "num_processes": 150,
-  "ppo_args": {
-    "clip_param": 0.2,
-    "eps": 1e-05,
-    "learning_rate": 0.005,
-    "max_grad_norm": 0.5,
-    "ppo_epoch": 5,
-    "value_loss_coef": 0.5
-  },
+  "clip_param": 0.2,
+  "eps": 1e-5,
+  "learning_rate": 0.005,
+  "max_grad_norm": 0.5,
+  "ppo_epoch": 5,
+  "value_loss_coef": 0.5,
   "render": false,
   "render_eval": false,
-  "rollouts_args": {
-    "gamma": 0.99,
-    "tau": 0.95,
-    "use_gae": false
-  },
+  "gamma": 0.99,
+  "tau": 0.95,
+  "use_gae": false,
   "seed": 16,
   "synchronous": false,
   "train_steps": 30

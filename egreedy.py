@@ -61,9 +61,6 @@ def main():
     # dataset = np.random.binomial(choices, p)
     dataset = np.random.normal(loc)
     choices, rewards = [np.stack(x) for x in zip(*EGreedy().train_loop(dataset))]
-    import ipdb
-
-    ipdb.set_trace()
 
     with Path("results.npz").open("wb") as f:
         np.savez(f, selections=choices, rewards=rewards)
