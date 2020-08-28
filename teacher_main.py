@@ -18,6 +18,8 @@ class EpochCounter(epoch_counter.EpochCounter):
     def __init__(self, num_processes):
         super().__init__(num_processes)
         self.info_lists = dict(
+            regret=[[] for _ in range(num_processes)],
+            baseline_regret=[[] for _ in range(num_processes)],
             rewards=[[] for _ in range(num_processes)],
             baseline_rewards=[[] for _ in range(num_processes)],
             coefficient=[[] for _ in range(num_processes)],
