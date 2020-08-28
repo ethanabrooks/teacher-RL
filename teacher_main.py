@@ -1,10 +1,10 @@
 import argparse
+import pickle
 from abc import ABC
-
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import epoch_counter
-from logger import Logger
 from main import add_arguments
 from networks import TeacherAgent
 from teacher_env import TeacherEnv
@@ -13,6 +13,8 @@ import numpy as np
 
 
 class EpochCounter(epoch_counter.EpochCounter):
+    infos_name = "infos"
+
     def __init__(self, num_processes):
         super().__init__(num_processes)
         self.info_lists = dict(
@@ -20,7 +22,7 @@ class EpochCounter(epoch_counter.EpochCounter):
             baseline_rewards=[[] for _ in range(num_processes)],
             coefficient=[[] for _ in range(num_processes)],
         )
-        self.info_arrays = {
+        self.episode_lists = {
             k: [None for _ in range(num_processes)] for k in self.info_lists
         }
 
@@ -29,25 +31,31 @@ class EpochCounter(epoch_counter.EpochCounter):
             for i, (info, d) in enumerate(zip(infos, done)):
                 lists[i].append(info[k])
                 if d:
-                    self.info_arrays[k][i] = np.array(lists[i])
+                    self.episode_lists[k][i] = lists[i]
                     lists[i] = []
 
         return super().update(reward, done, infos)
 
     def items(self, prefix=""):
-        for k, arrays in self.info_arrays.items():
-            arrays = [a for a in arrays if a is not None]
-            if arrays:
-                figure = plt.figure(figsize=(10, 10))
-                for array in arrays:
-                    if array is not None:
-                        plt.plot(array, color="green", alpha=0.01)
-                yield prefix + k + "_figure", figure
+        episode_lists = {
+            k: [x for x in v if x is not None] for k, v in self.episode_lists.items()
+        }
+        yield prefix + EpochCounter.infos_name, episode_lists
         yield from super().items(prefix)
 
 
 def main(choices, num_bandits, data_size, **kwargs):
     class TeacherTrainer(Trainer, ABC):
+        def step(self):
+            result = super().step()
+
+            for name in (EpochCounter.infos_name, "eval_" + EpochCounter.infos_name):
+                for k, v in result.pop(name).items():
+                    path = Path(self.logdir, f"{name}_{k}")
+                    np.save(str(path), np.array(v))
+
+            return result
+
         def make_env(self, env_id, seed, rank, evaluation):
             return TeacherEnv(
                 choices=choices, num_bandits=num_bandits, data_size=data_size

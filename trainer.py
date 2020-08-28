@@ -90,7 +90,8 @@ class Trainer(tune.Trainable):
         print(f"Loaded parameters from {checkpoint_path}.")
 
     def loop(self):
-        yield from self.iterator
+        while True:
+            yield self.step()
 
     def gen(
         self,
