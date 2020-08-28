@@ -27,7 +27,7 @@ class EGreedy:
         e = 1
         for i in range(d):
             rewards[:, i] = dataset[i, :, i]
-            e = yield i * np.ones(n), dataset[i, :, i], rewards / choices
+            e = yield i * np.ones(n), dataset[i, :, i]
 
         # implementation in vectorized form
         for i, data in enumerate(dataset[d:], start=d):
@@ -43,7 +43,7 @@ class EGreedy:
             choices[arange, choice] += 1
             reward = data[arange, choice]
             rewards[arange, choice] += reward
-            e = yield choice, reward, r
+            e = yield choice, reward
 
 
 def main():

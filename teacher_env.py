@@ -33,10 +33,8 @@ class TeacherEnv(gym.Env):
         #     ),
         # )
         self.observation_space = gym.spaces.Box(
-            low=np.array([0] + [min_reward] * (1 + self.choices), dtype=np.float32),
-            high=np.array(
-                [choices + 1] + [max_reward] * (1 + self.choices), dtype=np.float32
-            ),
+            low=np.array([0, min_reward], dtype=np.float32),
+            high=np.array([choices + 1, max_reward], dtype=np.float32),
         )
         self.action_space = gym.spaces.Box(
             low=np.zeros(num_bandits, dtype=np.float32),
@@ -81,8 +79,8 @@ class TeacherEnv(gym.Env):
         interaction = our_loop.send(action)
 
         for t in itertools.count():
-            choices, rewards, reward_avg = interaction
-            baseline_actions, baseline_rewards, _ = base_loop.send(0.1)
+            choices, rewards = interaction
+            baseline_actions, baseline_rewards = base_loop.send(0.1)
             chosen_means = loc[t][
                 np.arange(self.num_bandits), choices.astype(int).flatten()
             ].reshape(self.num_bandits)
@@ -91,7 +89,7 @@ class TeacherEnv(gym.Env):
             ].reshape(self.num_bandits)
             baseline_return += np.mean(baseline_rewards)
 
-            s = np.concatenate([choices, rewards, reward_avg.flatten()], axis=-1)
+            s = np.concatenate([choices, rewards], axis=-1)
             r = np.mean(rewards)
             i = dict(
                 baseline_regret=np.mean(optimal[t : t + 1] - baseline_chosen_means),
