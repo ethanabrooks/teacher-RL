@@ -59,9 +59,11 @@ def main(choices, num_bandits, data_size, **kwargs):
             return result
 
         def make_env(self, env_id, seed, rank, evaluation):
-            return TeacherEnv(
+            env = TeacherEnv(
                 choices=choices, num_bandits=num_bandits, data_size=data_size
             )
+            env.seed(seed + rank)
+            return env
 
         @staticmethod
         def build_agent(envs, **agent_args):
