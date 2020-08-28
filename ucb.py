@@ -23,7 +23,7 @@ def ucb(dataset: np.ndarray, default_c=2):
     c = 1
     for i in range(d):
         rewards[:, i] = dataset[i, :, i]
-        c = yield i * np.ones(n), dataset[i, :, i]
+        c = yield i * np.ones(n), dataset[i, :, i], rewards / choices
 
     # implementation in vectorized form
     for i, data in enumerate(dataset[d:], start=d):
@@ -36,7 +36,7 @@ def ucb(dataset: np.ndarray, default_c=2):
         choices[arange, choice] += 1
         reward = data[arange, choice]
         rewards[arange, choice] += reward
-        c = yield choice, reward
+        c = yield choice, reward, r
 
 
 def main():
