@@ -46,7 +46,7 @@ class TeacherEnv(gym.Env):
         # half = int(len(self.dataset) // 2)
         n = len(self.dataset)
         loc = np.zeros((n, *size))
-        loc[np.arange(n), 0, self.random.choice(self.choices, size=n)] = 1
+        loc[:, :, int(self.random.choice(self.choices))] = 1
         # half = len(self.dataset) - half
         # loc2 = np.random.normal(size=(half, *size), scale=1)
         # loc = np.vstack([loc1, loc2])
