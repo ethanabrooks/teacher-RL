@@ -15,7 +15,7 @@ class EGreedy:
     def __init__(self, seed=0):
         self.random, _ = seeding.np_random(seed)
 
-    def train_loop(self, dataset: np.ndarray):
+    def train_loop(self, dataset: np.ndarray, epsilon=0.1):
         # Implementing Upper Bound Confidence
         T, n, d = dataset.shape
 
@@ -36,7 +36,7 @@ class EGreedy:
             # upper_bound = r + e * delta
             # choice = np.argmax(upper_bound, axis=-1)
             if e is None:
-                e = 0.1
+                e = epsilon
             greedy = self.random.random(size=n) > e
             random = self.random.choice(d, size=n)
             choice = greedy * np.argmax(r, axis=-1) + (1 - greedy) * random
