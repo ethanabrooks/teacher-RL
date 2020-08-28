@@ -44,12 +44,12 @@ search_continuous = dict(
     ppo_epoch=hp.choice("ppo_epoch", [1, 3, 5]),
 )
 search_teacher = dict(
-    learning_rate=hp.choice("learning_rate", [7e-4, 3e-4, 2.5e-4, 1e-3]),
+    learning_rate=hp.choice("learning_rate", [1e-4, 3e-4, 2.5e-4, 7e-4, 1e-3, 2e-3]),
     seed=hp.randint("seed", 20),
     train_steps=hp.choice("train_steps", [50, 100, 250, 500, 1000, 2000]),
     entropy_coef=hp.choice("entropy_coef", [0.01, 0.02]),
-    hidden_size=hp.choice("hidden_size", [64, 128]),
-    num_layers=hp.choice("num_layers", [1, 2]),
+    hidden_size=hp.choice("hidden_size", [32, 64, 128, 256]),
+    num_layers=hp.choice("num_layers", [1, 2, 3]),
     num_batch=hp.choice("num_batch", [1, 2]),
     use_gae=True,
     clip_param=0.2,
