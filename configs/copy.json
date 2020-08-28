@@ -10,7 +10,7 @@
   "log_interval": 10,
   "normalize": false,
   "num_batch": 1,
-  "num_epochs": 40,
+  "num_iterations": 40,
   "num_processes": 150,
   "clip_param": 0.2,
   "eps": 1e-5,
