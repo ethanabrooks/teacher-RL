@@ -53,7 +53,7 @@ search_teacher = dict(
     num_batch=hp.choice("num_batch", [1, 2]),
     use_gae=True,
     clip_param=0.2,
-    ppo_epoch=hp.choice("ppo_epoch", [1, 3, 5]),
+    ppo_epoch=hp.choice("ppo_epoch", [1, 3, 5, 7, 10]),
 )
 ppo_paper_mujoco = dict(
     learning_rate=3e-4,
@@ -84,6 +84,7 @@ ppo_paper_roboschool = dict(
 configs = dict(
     search=search,
     search_continuous=search_continuous,
+    search_teacher=search_teacher,
     ppo_paper_mujoco=ppo_paper_mujoco,
     ppo_paper_roboschool=ppo_paper_roboschool,
 )
