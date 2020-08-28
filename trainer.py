@@ -102,7 +102,7 @@ class Trainer(tune.Trainable):
         log_interval: int,
         normalize: float,
         num_batch: int,
-        num_epochs: Optional[int],
+        num_iterations: Optional[int],
         num_processes: int,
         ppo_args: dict,
         render_eval: bool,
@@ -116,6 +116,7 @@ class Trainer(tune.Trainable):
         load_path: Path = None,
         render: bool = False,
     ):
+        assert (num_processes * train_steps) % train_steps == 0
         # Properly restrict pytorch to not consume extra resources.
         #  - https://github.com/pytorch/pytorch/issues/975
         #  - https://github.com/ray-project/ray/issues/3609
@@ -265,9 +266,10 @@ class Trainer(tune.Trainable):
                 train_results = ppo.update(rollouts)
                 rollouts.after_update()
 
-                if i % log_interval == 0:
+                total_num_steps = num_processes * train_steps * i
+                if total_num_steps % log_interval == 0:
                     training_iteration += 1
-                    if training_iteration == num_epochs:
+                    if training_iteration == num_iterations:
                         train_envs.close()
                     yield dict(
                         **train_results,
@@ -304,7 +306,7 @@ class Trainer(tune.Trainable):
         name,
         config,
         render,
-        num_epochs,
+        num_iterations,
         loggers=None,
         save_interval=None,
         **kwargs,
@@ -317,10 +319,10 @@ class Trainer(tune.Trainable):
             if v is not None:
                 config[k] = v
 
-        if num_epochs is None:
-            num_epochs = config.get("num_epochs")
+        if num_iterations is None:
+            num_iterations = config.get("num_iterations")
         if log_dir or render:
-            config.update(render=render, num_epochs=None)
+            config.update(render=render, num_iterations=None)
             print("Not using tune, because log_dir was specified")
             writer = SummaryWriter(logdir=str(log_dir))
             trainer = cls(config)
@@ -335,7 +337,7 @@ class Trainer(tune.Trainable):
                 ):
                     trainer._save(log_dir)
         else:
-            config.update(render=False, num_epochs=num_epochs)
+            config.update(render=False, num_iterations=num_iterations)
             local_mode = num_samples is None
             ray.init(dashboard_host="127.0.0.1", local_mode=local_mode)
             resources_per_trial = dict(gpu=gpus_per_trial, cpu=cpus_per_trial)
@@ -356,7 +358,7 @@ class Trainer(tune.Trainable):
                 name=name,
                 config=config,
                 resources_per_trial=resources_per_trial,
-                stop=dict(training_iteration=num_epochs),
+                stop=dict(training_iteration=num_iterations),
                 loggers=loggers,
                 **kwargs,
             )

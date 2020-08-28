@@ -13,7 +13,7 @@
   "max_grad_norm": 0.5,
   "normalize": false,
   "num_batch": 1,
-  "num_epochs": 500,
+  "num_iterations": 500,
   "num_layers": 1,
   "num_processes": 150,
   "ppo_epoch": 3,
