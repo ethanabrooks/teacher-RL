@@ -25,7 +25,7 @@ class TeacherEnv(gym.Env):
             ),
         )
         self.action_space = gym.spaces.Box(
-            low=np.array([1], np.float32), high=np.array([3], np.float32)
+            low=np.array([0.1], np.float32), high=np.array([3], np.float32)
         )
         self.dataset = np.zeros((data_size, 1, self.choices))
 
