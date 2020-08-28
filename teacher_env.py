@@ -5,48 +5,31 @@ import gym
 import numpy as np
 from gym.utils import seeding
 
-from egreedy import EGreedy
+from ucb import ucb
 
 
 class TeacherEnv(gym.Env):
-    def __init__(
-        self, choices: int, num_bandits: int, data_size: int, min_reward=1, max_reward=0
-    ):
+    def __init__(self, choices: int, data_size: int, min_reward=1, max_reward=0):
         super().__init__()
-        assert num_bandits == 1
         self.choices = choices
-        self.num_bandits = num_bandits
         self.random, self._seed = seeding.np_random(0)
         self._max_episode_steps = np.inf
         self.iterator = None
         self.min_reward = min_reward
         self.max_reward = max_reward
         self.data_size = data_size
-        # self.observation_space = gym.spaces.Box(
-        #     low=np.tile(
-        #         np.array([0] + [min_reward] * self.choices, dtype=np.float32),
-        #         (self.num_bandits, 1),
-        #     ),
-        #     high=np.tile(
-        #         np.array([choices - 1] + [max_reward] * self.choices, dtype=np.float32),
-        #         (self.num_bandits, 1),
-        #     ),
-        # )
         self.observation_space = gym.spaces.Box(
             low=np.array([0, min_reward], dtype=np.float32),
             high=np.array([choices + 1, max_reward], dtype=np.float32),
         )
         self.action_space = gym.spaces.Box(
-            low=np.zeros(num_bandits, dtype=np.float32),
-            high=np.ones(num_bandits, dtype=np.float32),
+            low=np.array([1], np.float32), high=np.array([3], np.float32)
         )
-        self.bandit = EGreedy(self._seed)
-        self.dataset = np.zeros((data_size, self.num_bandits, self.choices))
+        self.dataset = np.zeros((data_size, 1, self.choices))
 
     def seed(self, seed=None):
         seed = seed or 0
         self.random, self._seed = seeding.np_random(seed)
-        self.bandit = EGreedy(self._seed)
 
     def reset(self):
         self.iterator = self._generator()
@@ -57,36 +40,35 @@ class TeacherEnv(gym.Env):
         return self.iterator.send(action)
 
     def _generator(self) -> Generator:
-        size = self.num_bandits, self.choices
+        size = 1, self.choices
         # half = int(len(self.dataset) // 2)
-        loc = np.zeros((len(self.dataset), *size))
-        loc[:, :, int(self.random.choice(self.choices))] = 1
+        n = len(self.dataset)
+        loc = np.zeros((n, *size))
+        loc[np.arange(n), 0, self.random.choice(self.choices, size=n)] = 1
         # half = len(self.dataset) - half
         # loc2 = np.random.normal(size=(half, *size), scale=1)
         # loc = np.vstack([loc1, loc2])
         self.dataset = self.random.normal(loc, scale=2)
-        our_loop = self.bandit.train_loop(dataset=self.dataset)
-        base_loop = self.bandit.train_loop(dataset=self.dataset)
+        our_loop = ucb(dataset=self.dataset)
+        base_loop = ucb(dataset=self.dataset)
         optimal = loc.max(axis=-1, initial=-np.inf)
 
-        baseline_return = np.zeros(self.num_bandits)
+        baseline_return = np.zeros(1)
 
         next(our_loop)
         next(base_loop)
-        action = np.ones(self.num_bandits)
+        action = np.ones(1)
 
         done = False
         interaction = our_loop.send(action)
 
         for t in itertools.count():
             choices, rewards = interaction
-            baseline_actions, baseline_rewards = base_loop.send(0.1)
-            chosen_means = loc[t][
-                np.arange(self.num_bandits), choices.astype(int).flatten()
-            ].reshape(self.num_bandits)
-            baseline_chosen_means = loc[t][
-                np.arange(self.num_bandits), baseline_actions.astype(int).flatten()
-            ].reshape(self.num_bandits)
+            baseline_actions, baseline_rewards = base_loop.send(2)
+            chosen_means = loc[t, 0][choices.astype(int).flatten()].flatten()
+            baseline_chosen_means = loc[t, 0][
+                baseline_actions.astype(int).flatten()
+            ].flatten()
             baseline_return += np.mean(baseline_rewards)
 
             s = np.concatenate([choices, rewards], axis=-1)
