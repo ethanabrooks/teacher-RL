@@ -46,7 +46,7 @@ class EpochCounter(epoch_counter.EpochCounter):
         yield from super().items(prefix)
 
 
-def main(choices, data_size, **kwargs):
+def main(choices, num_bandits, data_size, **kwargs):
     class TeacherTrainer(Trainer, ABC):
         def step(self):
             result = super().step()
@@ -59,7 +59,9 @@ def main(choices, data_size, **kwargs):
             return result
 
         def make_env(self, env_id, seed, rank, evaluation):
-            env = TeacherEnv(choices=choices, data_size=data_size)
+            env = TeacherEnv(
+                choices=choices, num_bandits=num_bandits, data_size=data_size
+            )
             env.seed(seed + rank)
             return env
 
@@ -78,6 +80,7 @@ def main(choices, data_size, **kwargs):
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument("--choices", "-d", type=int, default=10)
+    PARSER.add_argument("--num-bandits", "-b", type=int, default=1)
     PARSER.add_argument("--data-size", "-T", type=int, default=1000)
     add_arguments(PARSER)
     main(**vars(PARSER.parse_args()))
