@@ -66,10 +66,8 @@ class TeacherEnv(gym.Env):
         for t in itertools.count():
             choices, rewards = interaction
             baseline_actions, baseline_rewards = base_loop.send(0.1)
-            chosen_means = loc[t][np.arange(1), choices.astype(int).flatten()]
-            baseline_chosen_means = loc[t][
-                np.arange(1), baseline_actions.astype(int).flatten()
-            ]
+            chosen_means = loc[t, 0][choices.astype(int).flatten()]
+            baseline_chosen_means = loc[t, 0][baseline_actions.astype(int).flatten()]
             baseline_return += np.mean(baseline_rewards)
 
             s = np.concatenate([choices, rewards], axis=-1)
