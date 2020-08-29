@@ -79,14 +79,13 @@ class TeacherEnv(gym.Env):
 
             choices, rewards = interaction
             linear_actions, linear_rewards = linear_loop.send(linear_eps)
-            linear_chosen_means = loc[t, 0][linear_actions.astype(int).flatten()]
-            linear_regret = np.mean(optimal[t : t + 1] - linear_chosen_means)
-            linear_reward = np.mean(linear_rewards)
+            linear_reward, linear_regret = compute_rewards_regret(
+                linear_actions, linear_rewards
+            )
             linear_eps -= initial_linear_eps / len(self.dataset)
             linear_return += linear_reward
-            chosen_means = loc[t, 0][choices.astype(int).flatten()]
-            regret = np.mean(optimal[t : t + 1] - chosen_means)
-            reward = np.mean(rewards)
+
+            reward, regret = compute_rewards_regret(choices, rewards)
 
             s = np.concatenate([choices, rewards], axis=-1)
             r = np.mean(rewards)
