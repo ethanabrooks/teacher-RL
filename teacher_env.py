@@ -42,7 +42,7 @@ class TeacherEnv(gym.Env):
         return self.iterator.send(action)
 
     def _generator(
-        self, initial_linear_eps=0.3, initial_exp_eps=0.9, exp_anneal=0.99
+        self, initial_linear_eps=0.3, initial_exp_eps=1, exp_anneal=0.99
     ) -> Generator:
         size = 1, self.choices
         # half = int(len(self.dataset) // 2)
