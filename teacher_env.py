@@ -77,18 +77,16 @@ class TeacherEnv(gym.Env):
                 _regret = optimal[t : t + 1] - chosen_means
                 return np.mean(_reward), np.mean(_regret)
 
-            choices, rewards = interaction
-            linear_actions, linear_rewards = linear_loop.send(linear_eps)
+            our_choices, our_rewards = interaction
             linear_reward, linear_regret = compute_rewards_regret(
-                linear_actions, linear_rewards
+                *linear_loop.send(linear_eps)
             )
             linear_eps -= initial_linear_eps / len(self.dataset)
             linear_return += linear_reward
 
-            reward, regret = compute_rewards_regret(choices, rewards)
+            reward, regret = compute_rewards_regret(our_choices, our_rewards)
 
-            s = np.concatenate([choices, rewards], axis=-1)
-            r = np.mean(rewards)
+            s = np.concatenate([our_choices, our_rewards], axis=-1)
             i = dict(
                 linear_regret=linear_regret,
                 linear_rewards=linear_reward,
@@ -105,7 +103,7 @@ class TeacherEnv(gym.Env):
             if done:
                 i.update(linear_return=linear_return)
 
-            action = yield s, r, done, i
+            action = yield s, reward, done, i
 
     def render(self, mode="human"):
         pass
