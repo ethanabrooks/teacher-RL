@@ -79,18 +79,22 @@ class TeacherEnv(gym.Env):
 
             choices, rewards = interaction
             linear_actions, linear_rewards = linear_loop.send(linear_eps)
-            linear_eps -= initial_linear_eps / len(self.dataset)
-            chosen_means = loc[t, 0][choices.astype(int).flatten()]
             linear_chosen_means = loc[t, 0][linear_actions.astype(int).flatten()]
-            linear_return += np.mean(linear_rewards)
+            linear_regret = np.mean(optimal[t : t + 1] - linear_chosen_means)
+            linear_reward = np.mean(linear_rewards)
+            linear_eps -= initial_linear_eps / len(self.dataset)
+            linear_return += linear_reward
+            chosen_means = loc[t, 0][choices.astype(int).flatten()]
+            regret = np.mean(optimal[t : t + 1] - chosen_means)
+            reward = np.mean(rewards)
 
             s = np.concatenate([choices, rewards], axis=-1)
             r = np.mean(rewards)
             i = dict(
-                linear_regret=np.mean(optimal[t : t + 1] - linear_chosen_means),
-                linear_rewards=np.mean(linear_rewards),
-                regret=np.mean(optimal[t : t + 1] - chosen_means),
-                rewards=np.mean(rewards),
+                linear_regret=linear_regret,
+                linear_rewards=linear_reward,
+                regret=regret,
+                rewards=reward,
                 coefficient=np.mean(action).item(),
             )
             try:
