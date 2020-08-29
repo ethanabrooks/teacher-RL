@@ -69,6 +69,7 @@ class TeacherEnv(gym.Env):
         interaction = our_loop.send(action)
 
         linear_eps = initial_linear_eps
+        exp_eps = initial_exp_eps
 
         for t in itertools.count():
 
@@ -83,6 +84,9 @@ class TeacherEnv(gym.Env):
             )
             linear_eps -= initial_linear_eps / len(self.dataset)
             linear_return += linear_reward
+            exp_reward, exp_regret = compute_rewards_regret(*exp_loop.send(exp_eps))
+            exp_eps *= exp_anneal
+            exp_return += exp_reward
 
             reward, regret = compute_rewards_regret(our_choices, our_rewards)
 
@@ -90,6 +94,8 @@ class TeacherEnv(gym.Env):
             i = dict(
                 linear_regret=linear_regret,
                 linear_rewards=linear_reward,
+                exp_regret=exp_regret,
+                exp_rewards=exp_reward,
                 regret=regret,
                 rewards=reward,
                 coefficient=np.mean(action).item(),
@@ -101,7 +107,7 @@ class TeacherEnv(gym.Env):
                 done = True
 
             if done:
-                i.update(linear_return=linear_return)
+                i.update(linear_return=linear_return, exp_return=exp_return)
 
             action = yield s, reward, done, i
 
