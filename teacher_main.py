@@ -17,16 +17,15 @@ class EpochCounter(epoch_counter.EpochCounter):
 
     def __init__(self, num_processes):
         super().__init__(num_processes)
-        self.info_lists = dict(
-            regret=[[] for _ in range(num_processes)],
-            baseline_regret=[[] for _ in range(num_processes)],
-            rewards=[[] for _ in range(num_processes)],
-            baseline_rewards=[[] for _ in range(num_processes)],
-            coefficient=[[] for _ in range(num_processes)],
-        )
-        self.episode_lists = {
-            k: [None for _ in range(num_processes)] for k in self.info_lists
-        }
+        keys = [
+            "regret",
+            "baseline_regret",
+            "rewards",
+            "baseline_rewards",
+            "coefficient",
+        ]
+        self.info_lists = {k: [[] for _ in range(num_processes)] for k in keys}
+        self.episode_lists = {k: [None for _ in range(num_processes)] for k in keys}
 
     def update(self, reward, done, infos):
         for k, lists in self.info_lists.items():
@@ -51,9 +50,10 @@ def main(choices, data_size, **kwargs):
         def step(self):
             result = super().step()
 
-            for name in (EpochCounter.infos_name, "eval_" + EpochCounter.infos_name):
+            for prefix in ("", "eval_"):
+                name = prefix + EpochCounter.infos_name
                 for k, v in result.pop(name).items():
-                    path = Path(self.logdir, f"{name}_{k}")
+                    path = Path(self.logdir, f"{prefix}_{k}")
                     np.save(str(path), np.array(v))
 
             return result

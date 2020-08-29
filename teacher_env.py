@@ -41,7 +41,9 @@ class TeacherEnv(gym.Env):
     def step(self, action):
         return self.iterator.send(action)
 
-    def _generator(self) -> Generator:
+    def _generator(
+        self, initial_linear_eps=0.3, initial_exp_eps=0.9, exp_anneal=0.99
+    ) -> Generator:
         size = 1, self.choices
         # half = int(len(self.dataset) // 2)
         loc = np.zeros((len(self.dataset), *size))
@@ -64,6 +66,12 @@ class TeacherEnv(gym.Env):
         interaction = our_loop.send(action)
 
         for t in itertools.count():
+
+            def compute_rewards_regret(_choices, _reward):
+                chosen_means = loc[t, 0][_choices.astype(int).flatten()]
+                _regret = optimal[t : t + 1] - chosen_means
+                return np.mean(_reward), np.mean(_regret)
+
             choices, rewards = interaction
             baseline_actions, baseline_rewards = base_loop.send(0.1)
             chosen_means = loc[t, 0][choices.astype(int).flatten()]
