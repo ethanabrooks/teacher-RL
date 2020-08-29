@@ -55,7 +55,7 @@ def main(choices, data_size, **kwargs):
             for prefix in ("", "eval_"):
                 name = prefix + EpochCounter.infos_name
                 for k, v in result.pop(name).items():
-                    path = Path(self.logdir, f"{prefix}_{k}")
+                    path = Path(self.logdir, f"{prefix}{k}")
                     np.save(str(path), np.array(v))
 
             return result
