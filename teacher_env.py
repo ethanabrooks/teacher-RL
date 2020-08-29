@@ -56,7 +56,7 @@ class TeacherEnv(gym.Env):
         base_loop = self.bandit.train_loop(dataset=self.dataset)
         optimal = loc.max(axis=-1, initial=-np.inf)
 
-        baseline_return = np.zeros(1)
+        linear_return = np.zeros(1)
 
         next(our_loop)
         next(base_loop)
@@ -73,16 +73,16 @@ class TeacherEnv(gym.Env):
                 return np.mean(_reward), np.mean(_regret)
 
             choices, rewards = interaction
-            baseline_actions, baseline_rewards = base_loop.send(0.1)
+            linear_actions, linear_rewards = base_loop.send(0.1)
             chosen_means = loc[t, 0][choices.astype(int).flatten()]
-            baseline_chosen_means = loc[t, 0][baseline_actions.astype(int).flatten()]
-            baseline_return += np.mean(baseline_rewards)
+            linear_chosen_means = loc[t, 0][linear_actions.astype(int).flatten()]
+            linear_return += np.mean(linear_rewards)
 
             s = np.concatenate([choices, rewards], axis=-1)
             r = np.mean(rewards)
             i = dict(
-                baseline_regret=np.mean(optimal[t : t + 1] - baseline_chosen_means),
-                baseline_rewards=np.mean(baseline_rewards),
+                linear_regret=np.mean(optimal[t : t + 1] - linear_chosen_means),
+                linear_rewards=np.mean(linear_rewards),
                 regret=np.mean(optimal[t : t + 1] - chosen_means),
                 rewards=np.mean(rewards),
                 coefficient=np.mean(action).item(),
@@ -94,7 +94,7 @@ class TeacherEnv(gym.Env):
                 done = True
 
             if done:
-                i.update(baseline_return=baseline_return)
+                i.update(linear_return=linear_return)
 
             action = yield s, r, done, i
 
