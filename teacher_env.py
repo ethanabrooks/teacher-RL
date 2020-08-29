@@ -41,9 +41,7 @@ class TeacherEnv(gym.Env):
     def step(self, action):
         return self.iterator.send(action)
 
-    def _generator(
-        self, initial_linear_eps=0.3, initial_exp_eps=0.9, exp_anneal=0.99
-    ) -> Generator:
+    def _generator(self) -> Generator:
         size = 1, self.choices
         # half = int(len(self.dataset) // 2)
         loc = np.zeros((len(self.dataset), *size))
@@ -53,50 +51,32 @@ class TeacherEnv(gym.Env):
         # loc = np.vstack([loc1, loc2])
         self.dataset = self.random.normal(loc, scale=2)
         our_loop = self.bandit.train_loop(dataset=self.dataset)
-        linear_loop = self.bandit.train_loop(dataset=self.dataset)
-        exp_loop = self.bandit.train_loop(dataset=self.dataset)
+        base_loop = self.bandit.train_loop(dataset=self.dataset)
         optimal = loc.max(axis=-1, initial=-np.inf)
 
-        linear_return = np.zeros(1)
+        baseline_return = np.zeros(1)
 
         next(our_loop)
-        next(linear_loop)
-        next(exp_loop)
+        next(base_loop)
         action = np.ones(1)
 
         done = False
         interaction = our_loop.send(action)
-        linear_eps = initial_linear_eps
-        exp_eps = initial_exp_eps
 
         for t in itertools.count():
-
-            def compute_rewards_regret(_choices, _reward):
-                chosen_means = loc[t, 0][_choices.astype(int).flatten()]
-                _regret = optimal[t : t + 1] - chosen_means
-                return np.mean(_reward), np.mean(_regret)
-
             choices, rewards = interaction
-            # linear_actions, linear_rewards = linear_loop.send(0.1)
-            # chosen_means = loc[t, 0][choices.astype(int).flatten()]
-            # baseline_chosen_means = loc[t, 0][linear_actions.astype(int).flatten()]
-            # linear_return += np.mean(linear_rewards)
-            reward, regret = compute_rewards_regret(choices, rewards)
-            linear_reward, linear_regret = compute_rewards_regret(
-                *linear_loop.send(linear_eps)
-            )
-            linear_eps -= initial_linear_eps / len(self.dataset)
-            exp_reward, exp_regret = compute_rewards_regret(*exp_loop.send(action))
-            exp_eps *= exp_anneal
+            baseline_actions, baseline_rewards = base_loop.send(0.1)
+            chosen_means = loc[t, 0][choices.astype(int).flatten()]
+            baseline_chosen_means = loc[t, 0][baseline_actions.astype(int).flatten()]
+            baseline_return += np.mean(baseline_rewards)
 
             s = np.concatenate([choices, rewards], axis=-1)
+            r = np.mean(rewards)
             i = dict(
-                linear_regret=linear_regret,
-                linear_rewards=linear_reward,
-                exp_regret=exp_regret,
-                exp_rewards=exp_reward,
-                regret=regret,
-                rewards=rewards,
+                baseline_regret=np.mean(optimal[t : t + 1] - baseline_chosen_means),
+                baseline_rewards=np.mean(baseline_rewards),
+                regret=np.mean(optimal[t : t + 1] - chosen_means),
+                rewards=np.mean(rewards),
                 coefficient=np.mean(action).item(),
             )
             try:
@@ -106,9 +86,9 @@ class TeacherEnv(gym.Env):
                 done = True
 
             if done:
-                i.update(baseline_return=linear_return)
+                i.update(baseline_return=baseline_return)
 
-            action = yield s, reward, done, i
+            action = yield s, r, done, i
 
     def render(self, mode="human"):
         pass
