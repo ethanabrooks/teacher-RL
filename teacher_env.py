@@ -53,17 +53,22 @@ class TeacherEnv(gym.Env):
         # loc = np.vstack([loc1, loc2])
         self.dataset = self.random.normal(loc, scale=2)
         our_loop = self.bandit.train_loop(dataset=self.dataset)
-        base_loop = self.bandit.train_loop(dataset=self.dataset)
+        linear_loop = self.bandit.train_loop(dataset=self.dataset)
+        exp_loop = self.bandit.train_loop(dataset=self.dataset)
         optimal = loc.max(axis=-1, initial=-np.inf)
 
         linear_return = np.zeros(1)
+        exp_return = np.zeros(1)
 
         next(our_loop)
-        next(base_loop)
+        next(linear_loop)
+        next(exp_loop)
         action = np.ones(1)
 
         done = False
         interaction = our_loop.send(action)
+
+        linear_eps = initial_linear_eps
 
         for t in itertools.count():
 
@@ -73,7 +78,8 @@ class TeacherEnv(gym.Env):
                 return np.mean(_reward), np.mean(_regret)
 
             choices, rewards = interaction
-            linear_actions, linear_rewards = base_loop.send(0.1)
+            linear_actions, linear_rewards = linear_loop.send(linear_eps)
+            linear_eps -= initial_linear_eps / len(self.dataset)
             chosen_means = loc[t, 0][choices.astype(int).flatten()]
             linear_chosen_means = loc[t, 0][linear_actions.astype(int).flatten()]
             linear_return += np.mean(linear_rewards)
