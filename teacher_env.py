@@ -46,12 +46,13 @@ class TeacherEnv(gym.Env):
     ) -> Generator:
         size = 1, self.choices
         # half = int(len(self.dataset) // 2)
-        loc = np.zeros((len(self.dataset), *size))
-        loc[:, :, int(self.random.choice(self.choices))] = 1
+        # loc = np.zeros((len(self.dataset), *size))
+        loc = np.tile(self.random.normal(size=size), (len(self.dataset), 1, 1))
+        # loc[:, :, int(self.random.choice(self.choices))] = 1
         # half = len(self.dataset) - half
         # loc2 = np.random.normal(size=(half, *size), scale=1)
         # loc = np.vstack([loc1, loc2])
-        self.dataset = self.random.normal(loc, scale=2)
+        self.dataset[:] = self.random.normal(loc)
         our_loop = self.bandit.train_loop(dataset=self.dataset)
         linear_loop = self.bandit.train_loop(dataset=self.dataset)
         exp_loop = self.bandit.train_loop(dataset=self.dataset)
