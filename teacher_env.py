@@ -9,7 +9,9 @@ from egreedy import EGreedy
 
 
 class TeacherEnv(gym.Env):
-    def __init__(self, choices: int, data_size: int, min_reward=1, max_reward=0):
+    def __init__(
+        self, choices: int, data_size: int, dataset: str, min_reward=1, max_reward=0
+    ):
         super().__init__()
         self.choices = choices
         self.random, self._seed = seeding.np_random(0)
@@ -26,6 +28,7 @@ class TeacherEnv(gym.Env):
             low=np.zeros(1, dtype=np.float32), high=np.ones(1, dtype=np.float32)
         )
         self.bandit = EGreedy(self._seed)
+        self.dataset_type = dataset
         self.dataset = np.zeros((data_size, 1, self.choices))
 
     def seed(self, seed=None):
@@ -46,13 +49,18 @@ class TeacherEnv(gym.Env):
     ) -> Generator:
         size = 1, self.choices
         # half = int(len(self.dataset) // 2)
-        # loc = np.zeros((len(self.dataset), *size))
-        loc = np.tile(self.random.normal(size=size), (len(self.dataset), 1, 1))
-        # loc[:, :, int(self.random.choice(self.choices))] = 1
+        if self.dataset_type == "01":
+            loc = np.zeros((len(self.dataset), *size))
+            loc[:, :, int(self.random.choice(self.choices))] = 1
+            self.dataset[:] = self.random.normal(loc)
+        elif self.dataset_type == "sb":
+            loc = np.tile(self.random.normal(size=size), (len(self.dataset), 1, 1))
+            self.dataset[:] = self.random.normal(loc)
+        else:
+            raise NotImplementedError
         # half = len(self.dataset) - half
         # loc2 = np.random.normal(size=(half, *size), scale=1)
         # loc = np.vstack([loc1, loc2])
-        self.dataset[:] = self.random.normal(loc)
         our_loop = self.bandit.train_loop(dataset=self.dataset)
         linear_loop = self.bandit.train_loop(dataset=self.dataset)
         exp_loop = self.bandit.train_loop(dataset=self.dataset)

@@ -1,15 +1,14 @@
 import argparse
-import pickle
 from abc import ABC
 from pathlib import Path
 
-import matplotlib.pyplot as plt
+import numpy as np
+
 import epoch_counter
 from main import add_arguments
 from networks import TeacherAgent
 from teacher_env import TeacherEnv
 from trainer import Trainer
-import numpy as np
 
 
 class EpochCounter(epoch_counter.EpochCounter):
@@ -47,7 +46,7 @@ class EpochCounter(epoch_counter.EpochCounter):
         yield from super().items(prefix)
 
 
-def main(choices, data_size, **kwargs):
+def main(choices, data_size, dataset, **kwargs):
     class TeacherTrainer(Trainer, ABC):
         def step(self):
             result = super().step()
@@ -61,7 +60,7 @@ def main(choices, data_size, **kwargs):
             return result
 
         def make_env(self, env_id, seed, rank, evaluation):
-            env = TeacherEnv(choices=choices, data_size=data_size)
+            env = TeacherEnv(choices=choices, data_size=data_size, dataset=dataset)
             env.seed(seed + rank)
             return env
 
@@ -81,5 +80,6 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument("--choices", "-d", type=int, default=10)
     PARSER.add_argument("--data-size", "-T", type=int, default=1000)
+    PARSER.add_argument("--dataset", choices=["01", "sb"])
     add_arguments(PARSER)
     main(**vars(PARSER.parse_args()))
