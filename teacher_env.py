@@ -45,7 +45,12 @@ class TeacherEnv(gym.Env):
         return self.iterator.send(action)
 
     def _generator(
-        self, const_eps=0.1, initial_linear_eps=0.3, initial_exp_eps=1, exp_anneal=0.99
+        self,
+        const_eps=0.1,
+        initial_linear_eps=0.9,
+        linear_anneal=9e-3,
+        initial_exp_eps=0.5,
+        exp_anneal=0.99,
     ) -> Generator:
         size = 1, self.choices
         # half = int(len(self.dataset) // 2)
@@ -96,7 +101,8 @@ class TeacherEnv(gym.Env):
             linear_reward, linear_regret = compute_rewards_regret(
                 *linear_loop.send(linear_eps)
             )
-            linear_eps -= initial_linear_eps / len(self.dataset)
+            linear_eps -= linear_anneal
+            linear_eps = max(0, linear_eps)
             linear_return += linear_reward
             exp_reward, exp_regret = compute_rewards_regret(*exp_loop.send(exp_eps))
             exp_eps *= exp_anneal
