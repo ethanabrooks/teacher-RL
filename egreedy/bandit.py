@@ -70,7 +70,7 @@ def run(dataset, loc, optimal, path):
 
 
 def main():
-    T = 1000
+    T = 2000
     n = 1000
     d = 10
 
