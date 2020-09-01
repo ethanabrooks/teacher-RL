@@ -5,7 +5,7 @@ import gym
 import numpy as np
 from gym.utils import seeding
 
-from egreedy import EGreedy
+from bandit import EGreedy
 
 
 class TeacherEnv(gym.Env):

@@ -6,8 +6,8 @@ import numpy as np
 
 import epoch_counter
 from main import add_arguments
-from networks import TeacherAgent
-from teacher_env import TeacherEnv
+from egreedy.network import TeacherAgent
+from egreedy.teacher import TeacherEnv
 from trainer import Trainer
 
 
