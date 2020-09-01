@@ -71,6 +71,7 @@ class TeacherEnv(gym.Env):
         exp_return = np.zeros(1)
 
         next(our_loop)
+        next(const_loop)
         next(linear_loop)
         next(exp_loop)
         action = np.ones(1)
