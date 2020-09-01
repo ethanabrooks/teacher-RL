@@ -73,7 +73,7 @@ def main(choices, data_size, dataset, **kwargs):
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument("--choices", "-d", type=int, default=10)
-    PARSER.add_argument("--data-size", "-T", type=int, default=1000)
+    PARSER.add_argument("--data-size", "-T", type=int, default=2000)
     PARSER.add_argument("--dataset", choices=["01", "sb"], required=True)
     add_arguments(PARSER)
     main(**vars(PARSER.parse_args()))
