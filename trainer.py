@@ -80,7 +80,7 @@ class Trainer(tune.Trainable):
         torch.save(dict(step=self.i, **state_dict), save_path)
         print(f"Saved parameters to {save_path}")
 
-    def restore(self, checkpoint_path):
+    def load_checkpoint(self, checkpoint_path):
         state_dict = torch.load(checkpoint_path, map_location=self.device)
         self.agent.load_state_dict(state_dict["agent"])
         self.ppo.optimizer.load_state_dict(state_dict["optimizer"])
@@ -190,7 +190,7 @@ class Trainer(tune.Trainable):
             train_counter = self.build_epoch_counter(num_processes)
 
             if load_path:
-                self._restore(load_path)
+                self.load_checkpoint(load_path)
 
             # copy to device
             if cuda:
@@ -335,7 +335,7 @@ class Trainer(tune.Trainable):
                     None not in (log_dir, save_interval)
                     and (i + 1) % save_interval == 0
                 ):
-                    trainer._save(log_dir)
+                    trainer.save_checkpoint(log_dir)
         else:
             config.update(render=False, num_iterations=num_iterations)
             local_mode = num_samples is None
