@@ -45,7 +45,7 @@ class TeacherEnv(gym.Env):
         return self.iterator.send(action)
 
     def _generator(
-        self, initial_linear_eps=0.3, initial_exp_eps=1, exp_anneal=0.99
+        self, const_eps=0.1, initial_linear_eps=0.3, initial_exp_eps=1, exp_anneal=0.99
     ) -> Generator:
         size = 1, self.choices
         # half = int(len(self.dataset) // 2)
@@ -62,6 +62,7 @@ class TeacherEnv(gym.Env):
         # loc2 = np.random.normal(size=(half, *size), scale=1)
         # loc = np.vstack([loc1, loc2])
         our_loop = self.bandit.train_loop(dataset=self.dataset)
+        const_loop = self.bandit.train_loop(dataset=self.dataset)
         linear_loop = self.bandit.train_loop(dataset=self.dataset)
         exp_loop = self.bandit.train_loop(dataset=self.dataset)
         optimal = loc.max(axis=-1, initial=-np.inf)
@@ -88,6 +89,9 @@ class TeacherEnv(gym.Env):
                 return np.mean(_reward), np.mean(_regret)
 
             our_choices, our_rewards = interaction
+            const_reward, const_regret = compute_rewards_regret(
+                *const_loop.send(const_eps)
+            )
             linear_reward, linear_regret = compute_rewards_regret(
                 *linear_loop.send(linear_eps)
             )
@@ -101,13 +105,18 @@ class TeacherEnv(gym.Env):
 
             s = np.concatenate([our_choices, our_rewards], axis=-1)
             i = dict(
+                const_regret=const_regret,
+                const_rewards=const_reward,
                 linear_regret=linear_regret,
                 linear_rewards=linear_reward,
                 exp_regret=exp_regret,
                 exp_rewards=exp_reward,
-                regret=regret,
-                rewards=reward,
-                coefficient=np.mean(action).item(),
+                our_regret=regret,
+                our_rewards=reward,
+                our_epsilon=np.mean(action).item(),
+                const_epsilon=const_eps,
+                linear_epsilon=linear_eps,
+                exp_epsilon=exp_eps,
             )
             try:
                 interaction = our_loop.send(action)
