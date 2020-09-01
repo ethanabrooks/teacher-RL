@@ -118,6 +118,10 @@ class TeacherEnv(gym.Env):
                 const_epsilon=const_eps,
                 linear_epsilon=linear_eps,
                 exp_epsilon=exp_eps,
+                our_optimality=float(regret == 0),
+                const_optimality=float(regret == 0),
+                linear_optimality=float(regret == 0),
+                exp_optimality=float(regret == 0),
             )
             try:
                 interaction = our_loop.send(action)

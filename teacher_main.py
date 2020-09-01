@@ -16,20 +16,9 @@ class EpochCounter(epoch_counter.EpochCounter):
 
     def __init__(self, num_processes):
         super().__init__(num_processes)
-        keys = [
-            "our_regret",
-            "our_rewards",
-            "const_regret",
-            "const_rewards",
-            "linear_regret",
-            "linear_rewards",
-            "exp_regret",
-            "exp_rewards",
-            "our_epsilon",
-            "const_epsilon",
-            "linear_epsilon",
-            "exp_epsilon",
-        ]
+        algos = ["our", "const", "linear", "exp"]
+        metrics = ["regret", "rewards", "optimality", "epsilon"]
+        keys = [f"{algo}_{metric}" for algo in algos for metric in metrics]
         self.info_lists = {k: [[] for _ in range(num_processes)] for k in keys}
         self.episode_lists = {k: [None for _ in range(num_processes)] for k in keys}
 
