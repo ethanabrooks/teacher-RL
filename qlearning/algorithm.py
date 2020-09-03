@@ -1,14 +1,9 @@
-import itertools
-from collections import namedtuple
-from pathlib import Path
-
 import argparse
+
 import gym
 import numpy as np
-from gym.envs.toy_text import NChainEnv
 from gym.spaces import Discrete
 from gym.utils import seeding
-from gym.wrappers import TimeLimit
 from tensorboardX import SummaryWriter
 
 
@@ -25,7 +20,6 @@ class QLearning:
         self,
         env: gym.Env,
         eval_env: gym.Env,
-        training_iterations: int,
         alpha: float = 0.1,
         gamma: float = 0.99,
         epsilon: float = 1,
@@ -36,7 +30,7 @@ class QLearning:
         assert isinstance(env.action_space, Discrete)
         assert isinstance(env.observation_space, Discrete)
         q = np.zeros((env.observation_space.n, env.action_space.n))
-        for _ in range(training_iterations):
+        while True:
             states = []
             actions = []
             rewards = []
@@ -94,9 +88,7 @@ def main(env_id, iterations):
     eval_env.seed(0)
     writer = SummaryWriter("/tmp/qlearning")
     episode = 0
-    for i, (q, s, d, r) in enumerate(
-        QLearning().train_loop(env, eval_env, training_iterations=iterations)
-    ):
+    for i, (q, s, d, r) in enumerate(QLearning().train_loop(env, eval_env)):
         if d:
             writer.add_scalar("return", r, episode)
             episode += 1
