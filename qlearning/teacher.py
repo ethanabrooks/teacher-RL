@@ -1,21 +1,8 @@
 import gym
 import numpy as np
-from gym.envs.registration import register
 from gym.spaces import Box
 
 from qlearning.algorithm import QLearning
-
-register(
-    id="FrozenLakeNotSlippery-v0",
-    entry_point="gym.envs.toy_text:FrozenLakeEnv",
-    kwargs={"map_name": "4x4", "is_slippery": False},
-)
-
-register(
-    id="LocalMinimaEnv-v0",
-    entry_point="qlearning.local_maxima_env:Env",
-    kwargs=dict(num_states=100),
-)
 
 
 class TeacherEnv(gym.Env):

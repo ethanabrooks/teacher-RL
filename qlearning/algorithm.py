@@ -2,9 +2,22 @@ import argparse
 
 import gym
 import numpy as np
+from gym.envs.registration import register
 from gym.spaces import Discrete
 from gym.utils import seeding
 from tensorboardX import SummaryWriter
+
+register(
+    id="FrozenLakeNotSlippery-v0",
+    entry_point="gym.envs.toy_text:FrozenLakeEnv",
+    kwargs={"map_name": "4x4", "is_slippery": False},
+)
+
+register(
+    id="LocalMinimaEnv-v0",
+    entry_point="qlearning.local_maxima_env:Env",
+    kwargs=dict(num_states=100),
+)
 
 
 class QLearning:
@@ -93,6 +106,9 @@ def main(env_id, iterations):
             writer.add_scalar("return", r, episode)
             episode += 1
             # print(r)
+        if i == iterations:
+            break
+
     print(q)
     for _ in range(5):
         list(QLearning().evaluate(eval_env, q, render=True))
