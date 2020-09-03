@@ -3,8 +3,15 @@ from typing import Generator
 import gym
 import numpy as np
 from gym.spaces import Box
+from gym.envs.registration import register
 
 from qlearning.algorithm import QLearning
+
+register(
+    id="FrozenLakeNotSlippery-v0",
+    entry_point="gym.envs.toy_text:FrozenLakeEnv",
+    kwargs={"map_name": "4x4", "is_slippery": False},
+)
 
 
 class TeacherEnv(gym.Env):
@@ -26,13 +33,10 @@ class TeacherEnv(gym.Env):
         env = gym.make(env_id)
         num_obs = env.observation_space.n
         num_act = env.action_space.n
+        q_array = np.inf * np.ones((num_obs * num_act), dtype=np.float32)
         self.observation_space = Box(
-            low=np.concatenate(
-                [np.array([0, 0]), -np.inf * np.ones((num_obs * num_act))]
-            ),
-            high=np.concatenate(
-                [np.array([num_obs, 1]), np.inf * np.ones((num_obs * num_act))]
-            ),
+            low=np.concatenate([np.array([0, 0], dtype=np.float32), -q_array,]),
+            high=np.concatenate([np.array([num_obs, 1], dtype=np.float32), q_array]),
         )
         self.action_space = env.action_space
 
