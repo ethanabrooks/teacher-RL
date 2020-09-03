@@ -16,7 +16,7 @@ class EpochCounter(epoch_counter.EpochCounter):
 
     def __init__(self, num_processes):
         super().__init__(num_processes)
-        keys = ["q", "eval_return"]
+        keys = ["q", "our_return", "base_return"]
         self.info_lists = {k: [[] for _ in range(num_processes)] for k in keys}
         self.episode_lists = {k: [None for _ in range(num_processes)] for k in keys}
 
