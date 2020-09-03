@@ -27,8 +27,10 @@ class QLearning:
         eval_env: gym.Env,
         training_iterations: int,
         alpha: float = 0.1,
-        epsilon: float = 0.1,
-        gamma: float = 0.9,
+        gamma: float = 0.99,
+        epsilon: float = 1,
+        epsilon_decay: float = 0.9,
+        min_epsilon: float = 0.001,
     ):
         # Implementing Upper Bound Confidence
         assert isinstance(env.action_space, Discrete)
@@ -50,6 +52,8 @@ class QLearning:
                         if self.random.random() < epsilon
                         else env.action_space.sample()
                     )
+                    epsilon *= epsilon_decay
+                    epsilon = max(epsilon, min_epsilon)
 
                 s, r, d, _ = env.step(a)
 
@@ -71,13 +75,6 @@ class QLearning:
                     states = []
                     actions = []
                     rewards = []
-
-    def act(self, s: int, q: np.ndarray, env: gym.Env):
-        return (
-            self.argmax(q[s])
-            if self.random.random() < 0.1
-            else env.action_space.sample()
-        )
 
     def evaluate(self, env: gym.Env, q: np.ndarray, render: bool = False):
         d = False
