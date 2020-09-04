@@ -59,17 +59,17 @@ class TeacherEnv(gym.Env):
             gamma=self.gamma,
         )
         q, s, d, r = next(our_loop)
-        _, _, d2, r2 = next(base_loop)
+        _, s2, d2, r2 = next(base_loop)
         info = dict()
         for i in range(self.training_iterations):
             if d:
-                info.update(our_return=r)
+                info.update(our_return=r, our_final_state=s)
             if d2:
-                info.update(base_return=r2)
+                info.update(base_return=r2, base_final_state=s2)
             s = np.concatenate([[s, d], q.flatten()])
             a = yield s, r, False, info
             q, s, d, r = our_loop.send(a)
-            _, _, d2, r2 = next(base_loop)
+            _, s2, d2, r2 = next(base_loop)
             info = dict(q=q[s, a])
         s = np.concatenate([[s, d], q.flatten()])
         yield s, r, True, {}
