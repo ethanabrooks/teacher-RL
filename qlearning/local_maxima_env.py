@@ -1,16 +1,18 @@
 import itertools
 
+import argparse
 import gym
 from gym.spaces import Discrete
 
 
 class Env(gym.Env):
-    def __init__(self, num_states=0):
+    def __init__(self, num_states):
         super().__init__()
         self.iterator = None
         self.num_states = num_states
         self.observation_space = Discrete(num_states)
         self.action_space = Discrete(2)
+        self._render = None
 
     def reset(self):
         self.iterator = self.generator()
@@ -21,7 +23,7 @@ class Env(gym.Env):
         return self.iterator.send(action)
 
     def render(self, mode="human"):
-        pass
+        self._render()
 
     def generator(self):
         s = 0
