@@ -32,7 +32,6 @@ class QLearning:
     def train_loop(
         self,
         env: gym.Env,
-        eval_env: gym.Env,
         alpha: float = 0.1,
         gamma: float = 0.99,
         epsilon: float = 1,
@@ -52,7 +51,7 @@ class QLearning:
             d = False
             while not d:
                 states.append(s)
-                a = yield q, s, d, 0
+                a = yield q, s, d
                 if a is None:
                     a = (
                         self.argmax(q[s])
@@ -76,8 +75,7 @@ class QLearning:
                     state = states[-1]
                     action = actions[-1]
                     q[state, action] += alpha * (rewards[-1] - q[state, action])
-                    evaluation = list(self.evaluate(eval_env, q))
-                    yield q, s, d, sum(evaluation)
+                    yield q, s, d
                     s = env.reset()
                     states = []
                     actions = []
