@@ -44,16 +44,29 @@ search_continuous = dict(
     ppo_epoch=hp.choice("ppo_epoch", [1, 3, 5]),
 )
 search_teacher = dict(
+    entropy_coef=hp.choice("entropy_coef", [0.01, 0.02, 0.03]),
     learning_rate=hp.choice("learning_rate", [1e-4, 3e-4, 2.5e-4, 7e-4, 1e-3, 2e-3]),
     seed=hp.randint("seed", 20),
-    train_steps=hp.choice("train_steps", [50, 100, 250, 500, 1000, 2000]),
-    entropy_coef=hp.choice("entropy_coef", [0.01, 0.02]),
-    hidden_size=hp.choice("hidden_size", [32, 64, 128, 256]),
-    num_layers=hp.choice("num_layers", [1, 2, 3]),
-    num_batch=hp.choice("num_batch", [1, 2]),
+    train_steps=hp.choice("train_steps", [32, 64, 128, 256]),
+    hidden_size=hp.choice("hidden_size", [128]),
+    num_layers=hp.choice("num_layers", [2]),
+    num_batch=hp.choice("num_batch", [1, 2, 8]),
     use_gae=True,
     clip_param=0.2,
-    ppo_epoch=hp.choice("ppo_epoch", [1, 3, 5, 7, 10]),
+    ppo_epoch=hp.choice("ppo_epoch", [3, 7, 10, 15, 20]),
+)
+ppo_paper_atari = dict(
+    learning_rate=3e-4,
+    seed=hp.randint("seed", 20),
+    train_steps=2048,
+    entropy_coef=0.01,
+    hidden_size=64,
+    num_layers=2,
+    num_batch=64,
+    use_gae=True,
+    clip_param=0.2,
+    ppo_epoch=10,
+    num_processes=128,
 )
 ppo_paper_mujoco = dict(
     learning_rate=3e-4,
