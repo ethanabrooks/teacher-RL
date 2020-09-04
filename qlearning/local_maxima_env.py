@@ -30,13 +30,25 @@ class Env(gym.Env):
         action = 0
         R = 0
         for stage in itertools.count():
-            for step in range(stage):
+            for step in range(stage + 1):
                 if action:
                     r = -1 if step else stage
-                    t = True
+                    t = False or (s + 1) == self.num_states
                 else:
                     r = stage
-                    t = False or (s + 1) == self.num_states
+                    t = True
+                R += r
+
+                def render():
+                    print("stage:", stage)
+                    print("step:", step)
+                    print("state:", s)
+                    print("reward:", r)
+                    print("done:", t)
+                    print("return:", R)
+                    print()
+
+                self._render = render
                 action = yield s, r, t, {}
                 s += 1
 
