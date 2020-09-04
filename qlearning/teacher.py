@@ -47,21 +47,25 @@ class TeacherEnv(gym.Env):
 
     def generator(self):
         our_loop = self.q_learning.train_loop(
-            gym.make(self.env_id), alpha=self.alpha, gamma=self.gamma,
+            gym.make(self.env_id),
+            alpha=self.alpha,
+            gamma=self.gamma,
         )
         base_loop = self.q_learning.train_loop(
-            gym.make(self.env_id), alpha=self.alpha, gamma=self.gamma,
+            gym.make(self.env_id),
+            alpha=self.alpha,
+            gamma=self.gamma,
         )
         eval_env = gym.make(self.env_id)
         q, s, d = next(our_loop)
         bq, _, _ = next(base_loop)
         info = {}
+        r = 0
         for i in range(self.training_iterations):
             info = {}
             if d:
-                info.update(our_return=r, our_final_state=s)
                 r = sum(self.q_learning.evaluate(eval_env, q))
-                info.update(our_return=r)
+                info.update(our_return=r, our_final_state=s)
             else:
                 r = 0
             s = np.concatenate([[s, d], q.flatten()])
