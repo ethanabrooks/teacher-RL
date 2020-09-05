@@ -14,7 +14,7 @@ register(
 )
 
 register(
-    id="LocalMinimaEnv-v0",
+    id="LocalMaximaEnv-v0",
     entry_point="qlearning.local_maxima_env:Env",
     kwargs=dict(num_states=100),
 )
