@@ -47,12 +47,12 @@ class TeacherEnv(gym.Env):
 
     def generator(self):
         our_loop = self.q_learning.train_loop(
-            gym.make(self.env_id), alpha=self.alpha, gamma=self.gamma,
+            gym.make(self.env_id, slip=0), alpha=self.alpha, gamma=self.gamma,
         )
         base_loop = self.q_learning.train_loop(
-            gym.make(self.env_id), alpha=self.alpha, gamma=self.gamma,
+            gym.make(self.env_id, slip=0), alpha=self.alpha, gamma=self.gamma,
         )
-        eval_env = gym.make(self.env_id)
+        eval_env = gym.make(self.env_id, slip=0)
         q, s, d = next(our_loop)
         bq, _, _ = next(base_loop)
         info = {}
