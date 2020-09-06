@@ -6,3 +6,13 @@
 - debug conditions when counts are equal
 - debug save intervals
 - rerun generalization by length baselines and generate graphs.
+
+- Read papers.
+- Provide previous epsilon
+- try adding time step
+- try adding non-stationary
+- graph for single episode: 
+    - coefficient
+    - reward
+    - reward with fixed eps
+    - reward with annealed eps

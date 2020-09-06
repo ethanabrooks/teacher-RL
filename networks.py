@@ -4,7 +4,7 @@ from gym.spaces import Box, Discrete
 import torch
 import torch.nn as nn
 
-from distributions import Categorical, DiagGaussian
+from distributions import Categorical, DiagGaussian, JointDist
 from layers import Flatten
 from utils import init, init_normc_, init_
 
@@ -29,17 +29,18 @@ class Agent(nn.Module):
             hidden_size, obs_spaces, recurrent, **network_args
         )
 
+        self.dist = self.build_dist(action_space)
+        self.continuous = isinstance(action_space, Box)
+
+    def build_dist(self, action_space):
         if isinstance(action_space, Discrete):
             num_outputs = action_space.n
-            self.dist = Categorical(self.recurrent_module.output_size, num_outputs)
-            self.min_action = 0
-            self.max_action = action_space.n
+            return Categorical(self.recurrent_module.output_size, num_outputs)
         elif isinstance(action_space, Box):
             num_outputs = action_space.shape[0]
-            self.dist = DiagGaussian(self.recurrent_module.output_size, num_outputs)
+            return DiagGaussian(self.recurrent_module.output_size, num_outputs)
         else:
             raise NotImplementedError
-        self.continuous = isinstance(action_space, Box)
 
     def build_recurrent_module(
         self, hidden_size, obs_spaces, recurrent, **network_args
@@ -89,6 +90,8 @@ class Agent(nn.Module):
 
         action_log_probs = dist.log_probs(action)
         entropy = dist.entropy().mean()
+        if isinstance(dist, torch.distributions.categorical.Categorical):
+            action = action.squeeze(-1)
         return AgentOutputs(
             value=value,
             action=action,
@@ -102,6 +105,42 @@ class Agent(nn.Module):
     def get_value(self, inputs, rnn_hxs, masks):
         value, _, _ = self.recurrent_module(inputs, rnn_hxs, masks)
         return value
+
+
+class CopyAgent(Agent):
+    def build_dist(self, action_space):
+        num_inputs = self.recurrent_module.output_size
+
+        class CopyDist(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.dists = nn.ModuleList(
+                    [Categorical(num_inputs, n) for n in action_space.nvec]
+                )
+
+            def forward(self, x):
+                return JointDist(*[d(x) for d in self.dists])
+
+        return CopyDist()
+
+    def build_recurrent_module(
+        self, hidden_size, obs_spaces, recurrent, **network_args
+    ):
+        class CopyBase(MLPBase):
+            def __init__(self):
+                super().__init__(
+                    hidden_size=hidden_size,
+                    num_inputs=hidden_size,
+                    recurrent=True,
+                    **network_args,
+                )
+                self.embedding = nn.Embedding(obs_spaces.n, hidden_size)
+
+            def forward(self, inputs, rnn_hxs, masks):
+                embedding = self.embedding(inputs.long())
+                return super().forward(embedding, rnn_hxs, masks)
+
+        return CopyBase()
 
 
 class NNBase(nn.Module):

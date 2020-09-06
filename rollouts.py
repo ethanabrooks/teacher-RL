@@ -20,14 +20,6 @@ Batch = namedtuple(
 )
 
 
-def buffer_shape(space: gym.Space):
-    shape = space_shape(space)
-    if isinstance(shape, dict):
-        # print('buffer shape', shape)
-        shape = (int(sum(np.prod(s) for s in shape.values())),)  # concatenate
-    return shape
-
-
 class RolloutStorage(object):
     def __init__(
         self,
@@ -43,7 +35,7 @@ class RolloutStorage(object):
         self.use_gae = use_gae
         self.gamma = gamma
         self.tau = tau
-        self.obs = torch.zeros(num_steps + 1, num_processes, *buffer_shape(obs_space))
+        self.obs = torch.zeros(num_steps + 1, num_processes, *space_shape(obs_space))
 
         self.recurrent_hidden_states = torch.zeros(
             num_steps + 1, num_processes, recurrent_hidden_state_size
@@ -54,9 +46,7 @@ class RolloutStorage(object):
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
         self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
 
-        self.actions = torch.zeros(
-            num_steps, num_processes, *buffer_shape(action_space)
-        )
+        self.actions = torch.zeros(num_steps, num_processes, *space_shape(action_space))
         if isinstance(action_space, (spaces.Discrete, spaces.MultiDiscrete)):
             self.actions = self.actions.long()
         self.masks = torch.ones(num_steps + 1, num_processes, 1)
@@ -145,7 +135,9 @@ class RolloutStorage(object):
         recurrent_hidden_states_batch = self.recurrent_hidden_states[:-1].view(
             -1, self.recurrent_hidden_states.size(-1)
         )[indices]
-        actions_batch = self.actions.view(-1, self.actions.size(-1))[indices]
+        actions_batch = self.actions.view(
+            self.actions.size(0) * self.actions.size(1), -1
+        )[indices]
         value_preds_batch = self.value_preds[:-1].view(-1, 1)[indices]
         return_batch = self.returns[:-1].view(-1, 1)[indices]
         masks_batch = self.masks[:-1].view(-1, 1)[indices]

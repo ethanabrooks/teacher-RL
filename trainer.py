@@ -1,17 +1,15 @@
 import inspect
+import math
 import os
 import sys
 from collections import namedtuple
 from pathlib import Path
 from pprint import pprint
-from typing import Dict
+from typing import Dict, Optional
 
 import gym
 import ray
 import torch
-from gym.spaces import Box
-
-from configs import configs
 from ray import tune
 from ray.tune.suggest.hyperopt import HyperOptSearch
 from tensorboardX import SummaryWriter
@@ -20,11 +18,12 @@ from common.vec_env.dummy_vec_env import DummyVecEnv
 from common.vec_env.subproc_vec_env import SubprocVecEnv
 from common.vec_env.util import set_seeds
 from epoch_counter import EpochCounter
-from networks import Agent, AgentOutputs, MLPBase
+from networks import Agent, AgentOutputs, MLPBase, CopyAgent
 from ppo import PPO
 from rollouts import RolloutStorage
 from utils import k_scalar_pairs
-from wrappers import VecPyTorch
+from wrappers import VecPyTorch, TupleActionWrapper
+import itertools
 
 EpochOutputs = namedtuple("EpochOutputs", "obs reward done infos act masks")
 
@@ -39,12 +38,38 @@ class Trainer(tune.Trainable):
         super().__init__(*args, **kwargs)
 
     def setup(self, config):
+        agent_args = {}
+        rollouts_args = {}
+        ppo_args = {}
+        other_args = {}
+        for k, v in config.items():
+            if k in ["train_steps", "num_processes", "num_batch"]:
+                other_args[k] = v
+            elif k in inspect.signature(self.build_agent).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(Agent.__init__).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(MLPBase.__init__).parameters:
+                agent_args[k] = v
+            elif k in inspect.signature(RolloutStorage.__init__).parameters:
+                rollouts_args[k] = v
+            elif k in inspect.signature(PPO.__init__).parameters:
+                ppo_args[k] = v
+            else:
+                other_args[k] = v
+        config = dict(
+            agent_args=agent_args,
+            rollouts_args=rollouts_args,
+            ppo_args=ppo_args,
+            **other_args,
+        )
+
         self.iterator = self.gen(**config)
 
     def step(self):
         return next(self.iterator)
 
-    def _save(self, tmp_checkpoint_dir):
+    def save_checkpoint(self, tmp_checkpoint_dir):
         modules = dict(
             optimizer=self.ppo.optimizer, agent=self.agent
         )  # type: Dict[str, torch.nn.Module]
@@ -55,17 +80,18 @@ class Trainer(tune.Trainable):
         torch.save(dict(step=self.i, **state_dict), save_path)
         print(f"Saved parameters to {save_path}")
 
-    def _restore(self, checkpoint):
-        state_dict = torch.load(checkpoint, map_location=self.device)
+    def load_checkpoint(self, checkpoint_path):
+        state_dict = torch.load(checkpoint_path, map_location=self.device)
         self.agent.load_state_dict(state_dict["agent"])
         self.ppo.optimizer.load_state_dict(state_dict["optimizer"])
         # start = state_dict.get("step", -1) + 1
         # if isinstance(self.envs.venv, VecNormalize):
         #     self.envs.venv.load_state_dict(state_dict["vec_normalize"])
-        print(f"Loaded parameters from {checkpoint}.")
+        print(f"Loaded parameters from {checkpoint_path}.")
 
     def loop(self):
-        yield from self.iterator
+        while True:
+            yield self.step()
 
     def gen(
         self,
@@ -76,7 +102,7 @@ class Trainer(tune.Trainable):
         log_interval: int,
         normalize: float,
         num_batch: int,
-        num_epochs: int,
+        num_iterations: Optional[int],
         num_processes: int,
         ppo_args: dict,
         render_eval: bool,
@@ -90,6 +116,7 @@ class Trainer(tune.Trainable):
         load_path: Path = None,
         render: bool = False,
     ):
+        assert (num_processes * train_steps) % train_steps == 0
         # Properly restrict pytorch to not consume extra resources.
         #  - https://github.com/pytorch/pytorch/issues/975
         #  - https://github.com/ray-project/ray/issues/3609
@@ -98,11 +125,11 @@ class Trainer(tune.Trainable):
 
         def make_vec_envs(evaluation):
             def env_thunk(rank):
-                return self.make_env(
+                return lambda: self.make_env(
                     seed=int(seed), rank=rank, evaluation=evaluation, env_id=env_id
                 )
 
-            env_fns = [lambda: env_thunk(i) for i in range(num_processes)]
+            env_fns = [env_thunk(i) for i in range(num_processes)]
             use_dummy = len(env_fns) == 1 or sys.platform == "darwin" or synchronous
             return VecPyTorch(
                 DummyVecEnv(env_fns, render=render)
@@ -146,102 +173,112 @@ class Trainer(tune.Trainable):
         print("Using device", self.device)
 
         train_envs = make_vec_envs(evaluation=False)
-        train_envs.to(self.device)
-        agent = self.agent = self.build_agent(envs=train_envs, **agent_args)
-        rollouts = RolloutStorage(
-            num_steps=train_steps,
-            num_processes=num_processes,
-            obs_space=train_envs.observation_space,
-            action_space=train_envs.action_space,
-            recurrent_hidden_state_size=agent.recurrent_hidden_state_size,
-            **rollouts_args,
-        )
+        try:
+            train_envs.to(self.device)
 
-        ppo = self.ppo = PPO(agent=agent, num_batch=num_batch, **ppo_args)
-        train_counter = self.build_epoch_counter(num_processes)
+            agent = self.agent = self.build_agent(envs=train_envs, **agent_args)
+            rollouts = RolloutStorage(
+                num_steps=train_steps,
+                num_processes=num_processes,
+                obs_space=train_envs.observation_space,
+                action_space=train_envs.action_space,
+                recurrent_hidden_state_size=agent.recurrent_hidden_state_size,
+                **rollouts_args,
+            )
 
-        if load_path:
-            self._restore(load_path)
+            ppo = self.ppo = PPO(agent=agent, num_batch=num_batch, **ppo_args)
+            train_counter = self.build_epoch_counter(num_processes)
 
-        # copy to device
-        if cuda:
-            agent.to(self.device)
-            rollouts.to(self.device)
+            if load_path:
+                self.load_checkpoint(load_path)
 
-        rollouts.obs[0].copy_(train_envs.reset())
-        for i in range(num_epochs):
-            eval_counter = self.build_epoch_counter(num_processes)
-            if eval_interval and not no_eval and i % eval_interval == 0:
-                # vec_norm = get_vec_normalize(eval_envs)
-                # if vec_norm is not None:
-                #     vec_norm.eval()
-                #     vec_norm.ob_rms = get_vec_normalize(envs).ob_rms
+            # copy to device
+            if cuda:
+                agent.to(self.device)
+                rollouts.to(self.device)
 
-                # self.envs.evaluate()
-                eval_masks = torch.zeros(num_processes, 1, device=self.device)
-                eval_envs = make_vec_envs(evaluation=True)
-                eval_envs.to(self.device)
-                with agent.recurrent_module.evaluating(eval_envs.observation_space):
-                    eval_recurrent_hidden_states = torch.zeros(
-                        num_processes,
-                        agent.recurrent_hidden_state_size,
-                        device=self.device,
+            obs = train_envs.reset()
+            rollouts.obs[0].copy_(obs)
+            training_iteration = 0
+            for i in itertools.count():
+                eval_counter = self.build_epoch_counter(num_processes)
+                if eval_interval and not no_eval and i % eval_interval == 0:
+                    # vec_norm = get_vec_normalize(eval_envs)
+                    # if vec_norm is not None:
+                    #     vec_norm.eval()
+                    #     vec_norm.ob_rms = get_vec_normalize(envs).ob_rms
+
+                    # self.envs.evaluate()
+                    eval_masks = torch.zeros(num_processes, 1, device=self.device)
+                    eval_envs = make_vec_envs(evaluation=True)
+                    eval_envs.to(self.device)
+                    with agent.recurrent_module.evaluating(eval_envs.observation_space):
+                        eval_recurrent_hidden_states = torch.zeros(
+                            num_processes,
+                            agent.recurrent_hidden_state_size,
+                            device=self.device,
+                        )
+
+                        for epoch_output in run_epoch(
+                            obs=eval_envs.reset(),
+                            rnn_hxs=eval_recurrent_hidden_states,
+                            masks=eval_masks,
+                            envs=eval_envs,
+                            num_steps=eval_steps,
+                        ):
+                            eval_counter.update(
+                                reward=epoch_output.reward,
+                                done=epoch_output.done,
+                                infos=epoch_output.infos,
+                            )
+                    eval_envs.close()
+
+                for epoch_output in run_epoch(
+                    obs=rollouts.obs[0],
+                    rnn_hxs=rollouts.recurrent_hidden_states[0],
+                    masks=rollouts.masks[0],
+                    envs=train_envs,
+                    num_steps=train_steps,
+                ):
+                    train_counter.update(
+                        reward=epoch_output.reward,
+                        done=epoch_output.done,
+                        infos=epoch_output.infos,
+                    )
+                    rollouts.insert(
+                        obs=epoch_output.obs,
+                        recurrent_hidden_states=epoch_output.act.rnn_hxs,
+                        actions=epoch_output.act.action,
+                        action_log_probs=epoch_output.act.action_log_probs,
+                        values=epoch_output.act.value,
+                        rewards=epoch_output.reward,
+                        masks=epoch_output.masks,
                     )
 
-                    for epoch_output in run_epoch(
-                        obs=eval_envs.reset(),
-                        rnn_hxs=eval_recurrent_hidden_states,
-                        masks=eval_masks,
-                        envs=eval_envs,
-                        num_steps=eval_steps,
-                    ):
-                        eval_counter.update(
-                            reward=epoch_output.reward,
-                            done=epoch_output.done,
-                            infos=epoch_output.infos,
-                        )
-                eval_envs.close()
+                with torch.no_grad():
+                    next_value = agent.get_value(
+                        rollouts.obs[-1],
+                        rollouts.recurrent_hidden_states[-1],
+                        rollouts.masks[-1],
+                    )
 
-            for epoch_output in run_epoch(
-                obs=rollouts.obs[0],
-                rnn_hxs=rollouts.recurrent_hidden_states[0],
-                masks=rollouts.masks[0],
-                envs=train_envs,
-                num_steps=train_steps,
-            ):
-                train_counter.update(
-                    reward=epoch_output.reward,
-                    done=epoch_output.done,
-                    infos=epoch_output.infos,
-                )
-                rollouts.insert(
-                    obs=epoch_output.obs,
-                    recurrent_hidden_states=epoch_output.act.rnn_hxs,
-                    actions=epoch_output.act.action,
-                    action_log_probs=epoch_output.act.action_log_probs,
-                    values=epoch_output.act.value,
-                    rewards=epoch_output.reward,
-                    masks=epoch_output.masks,
-                )
+                rollouts.compute_returns(next_value.detach())
+                train_results = ppo.update(rollouts)
+                rollouts.after_update()
 
-            with torch.no_grad():
-                next_value = agent.get_value(
-                    rollouts.obs[-1],
-                    rollouts.recurrent_hidden_states[-1],
-                    rollouts.masks[-1],
-                )
-
-            rollouts.compute_returns(next_value.detach())
-            train_results = ppo.update(rollouts)
-            rollouts.after_update()
-
-            if i % log_interval == 0:
-                yield dict(
-                    **train_results,
-                    **dict(train_counter.items()),
-                    **dict(eval_counter.items(prefix="eval_")),
-                )
-                train_counter.reset()
+                total_num_steps = num_processes * train_steps * i
+                if total_num_steps % log_interval == 0:
+                    training_iteration += 1
+                    if training_iteration == num_iterations:
+                        train_envs.close()
+                    yield dict(
+                        **train_results,
+                        **dict(train_counter.items()),
+                        **dict(eval_counter.items(prefix="eval_")),
+                    )
+                    train_counter.reset()
+        finally:
+            train_envs.close()
 
     @classmethod
     def build_epoch_counter(cls, num_processes):
@@ -254,6 +291,8 @@ class Trainer(tune.Trainable):
     @staticmethod
     def make_env(env_id, seed, rank, evaluation):
         env = gym.make(env_id)
+        if env_id == "Copy-v0":
+            env = TupleActionWrapper(env)
         env.seed(seed + rank)
         return env
 
@@ -267,6 +306,8 @@ class Trainer(tune.Trainable):
         name,
         config,
         render,
+        num_iterations,
+        loggers=None,
         save_interval=None,
         **kwargs,
     ):
@@ -278,36 +319,12 @@ class Trainer(tune.Trainable):
             if v is not None:
                 config[k] = v
 
-        agent_args = {}
-        rollouts_args = {}
-        ppo_args = {}
-        other_args = {}
-        for k, v in config.items():
-            if k in ["train_steps", "num_processes", "num_batch"]:
-                other_args[k] = v
-            elif k in inspect.signature(cls.build_agent).parameters:
-                agent_args[k] = v
-            elif k in inspect.signature(Agent.__init__).parameters:
-                agent_args[k] = v
-            elif k in inspect.signature(MLPBase.__init__).parameters:
-                agent_args[k] = v
-            elif k in inspect.signature(RolloutStorage.__init__).parameters:
-                rollouts_args[k] = v
-            elif k in inspect.signature(PPO.__init__).parameters:
-                ppo_args[k] = v
-            else:
-                other_args[k] = v
-        config = dict(
-            agent_args=agent_args,
-            rollouts_args=rollouts_args,
-            ppo_args=ppo_args,
-            **other_args,
-        )
-
+        if num_iterations is None:
+            num_iterations = config.get("num_iterations")
         if log_dir or render:
+            config.update(render=render, num_iterations=None)
             print("Not using tune, because log_dir was specified")
             writer = SummaryWriter(logdir=str(log_dir))
-            config.update(render=render)
             trainer = cls(config)
             for i, result in enumerate(trainer.loop()):
                 pprint(result)
@@ -318,12 +335,11 @@ class Trainer(tune.Trainable):
                     None not in (log_dir, save_interval)
                     and (i + 1) % save_interval == 0
                 ):
-                    trainer._save(log_dir)
+                    trainer.save_checkpoint(log_dir)
         else:
+            config.update(render=False, num_iterations=num_iterations)
             local_mode = num_samples is None
             ray.init(dashboard_host="127.0.0.1", local_mode=local_mode)
-            metric = "final_reward"
-
             resources_per_trial = dict(gpu=gpus_per_trial, cpu=cpus_per_trial)
             kwargs = dict()
 
@@ -331,7 +347,9 @@ class Trainer(tune.Trainable):
                 print("Using local mode because num_samples is None")
             else:
                 kwargs = dict(
-                    search_alg=HyperOptSearch(config, metric=metric),
+                    search_alg=HyperOptSearch(
+                        config, metric=EpochCounter.last_return_name
+                    ),
                     num_samples=num_samples,
                 )
 
@@ -340,5 +358,7 @@ class Trainer(tune.Trainable):
                 name=name,
                 config=config,
                 resources_per_trial=resources_per_trial,
+                stop=dict(training_iteration=num_iterations),
+                loggers=loggers,
                 **kwargs,
             )
