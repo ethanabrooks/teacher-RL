@@ -29,7 +29,7 @@ search = dict(
     num_batch=hp.choice("num_batch", [1, 2]),
     use_gae=True,
     clip_param=hp.choice("clip_param", [0.1, 0.2]),
-    ppo_epoch=hp.choice("ppo_epoch", [5, 10, 15, 20, 25]),
+    ppo_epoch=hp.choice("ppo_epoch", [5, 10, 15]),
 )
 search_continuous = dict(
     learning_rate=hp.choice("learning_rate", [7e-4, 3e-4, 2.5e-4, 1e-3]),
